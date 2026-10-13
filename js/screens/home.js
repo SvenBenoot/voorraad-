@@ -121,7 +121,7 @@ export function HomeScreen() {
       confirmLabel="Wijzigen" onConfirm=${() => { const id = askEdit.id; setAskEdit(null); go('/wijzigen/' + id); }}
       onDismiss=${() => setAskEdit(null)} />`}
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${askDelete.name + ' verwijderen?'}
-      text="Het artikel, zijn foto en de geschiedenis worden gewist. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { store.delete(askDelete.id); setAskDelete(null); }}
       onDismiss=${() => setAskDelete(null)} />`}
   </div>`;

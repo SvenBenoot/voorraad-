@@ -96,7 +96,7 @@ export function ItemScreen({ id }) {
     </main>
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${item.name + ' verwijderen?'}
-      text="Het artikel, de foto en de geschiedenis worden gewist. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { setAskDelete(false); store.delete(item.id); }}
       onDismiss=${() => setAskDelete(false)} />`}
 

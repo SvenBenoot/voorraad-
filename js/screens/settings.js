@@ -140,7 +140,7 @@ export function SettingsScreen() {
       <${SectionHeader}>Reservekopie<//>
       <${Card}>
         <div class="card-title">Gegevens bewaren in iCloud Drive</div>
-        <p class="sub">Alles staat enkel op deze iPhone. Verwijder je de app, dan is alles weg. Bewaar daarom geregeld een reservekopie in iCloud Drive; die kan je ook terugzetten op een nieuwe gsm of in de Android-app.</p>
+        <p class="sub">Alles staat enkel op deze iPhone. Verwijder je de app, dan is alles weg. Bewaar daarom geregeld een reservekopie in iCloud Drive; die kan je ook terugzetten op een nieuwe gsm.</p>
         <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt op dit toestel.'}</p>
         <div class="btn-row wrap">
           <${Button} kind="primary" icon="i_backup" onClick=${() => setShare('backup')}>Reservekopie maken…<//>

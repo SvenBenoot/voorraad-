@@ -76,9 +76,12 @@ export function ScanScreen() {
 
   const saveBatch = async () => {
     const deltas = Object.fromEntries(batch.map(([id, n]) => [id, take ? -n : n]));
+    const before = Object.fromEntries(batch.map(([id]) => [id, store.item(id)?.quantity ?? 0]));
     await store.adjustMany(deltas);
+    const real = batch.reduce((s, [id]) => s + Math.abs((store.item(id)?.quantity ?? 0) - before[id]), 0);
     setBatch([]);
-    toast(`${total} stuks ${take ? 'afgeteld' : 'bijgeteld'}`);
+    toast(real === 1 ? `1 stuk ${take ? 'afgeteld' : 'bijgeteld'}` : `${real} stuks ${take ? 'afgeteld' : 'bijgeteld'}`
+      + (real < total ? ' (niet onder nul)' : ''));
   };
 
   const help = MODES.find((m) => m.key === mode).help;
@@ -132,7 +135,10 @@ export function ScanScreen() {
         const it = store.item(found);
         setFound(null);
         const q = await store.adjust(it.id, delta);
-        setResult({ id: it.id, name: it.name, delta, quantity: q, low: it.minimum > 0 && q < it.minimum });
+        // Nooit onder nul: toon (en maak ongedaan) wat er echt veranderde, niet wat er gevraagd was.
+        const real = q - it.quantity;
+        if (real === 0) { toast(`Niets afgeteld: er ${it.quantity === 1 ? 'is' : 'zijn'} er ${it.quantity}`); return; }
+        setResult({ id: it.id, name: it.name, delta: real, quantity: q, low: it.minimum > 0 && q < it.minimum });
       }}
       onOpen=${() => { const id = found; setFound(null); go('/artikel/' + id); }}
       onDismiss=${() => setFound(null)} />`}
