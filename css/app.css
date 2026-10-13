@@ -68,6 +68,8 @@ body::before {
     radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--brand2) calc(var(--glow) * 100%), transparent), transparent 60%);
 }
 button, input, textarea { font: inherit; color: inherit; }
+/* Geen dubbeltik-zoom op de iPhone: snel tikken op + of − moet gewoon tellen. */
+html, body, button, a, input, textarea, label, [role="button"] { touch-action: manipulation; }
 button { cursor: pointer; }
 img { display: block; }
 .icon { flex: none; display: block; }
