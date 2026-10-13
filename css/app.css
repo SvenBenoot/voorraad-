@@ -458,3 +458,8 @@ p { margin: 4px 0; }
 .sheet-btn.danger-text .icon { color: var(--red-fg); }
 .sheet-btn:active { background: var(--hover); }
 @media (max-width: 359px) { .ed-photo { width: 80px; height: 80px; } .stepper input { width: 46px; } .g-row { padding-left: 14px; } }
+.g-btn { width: 100%; border: 0; background: none; color: inherit; text-align: left; font: inherit; }
+.g-btn:active { background: var(--hover); }
+.g-value { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 16px; font-weight: 600; }
+.chev { flex: none; color: var(--faint); margin-right: 6px; }
+.sheet-grow { flex: 1; }
