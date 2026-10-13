@@ -3,9 +3,10 @@
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { store, newId, categoryOf } from '../store.js';
 import {
-  useData, usePhotoUrl, TopBar, Footer, Button, TextField, NumberField, FilterChip, Card, SectionHeader,
+  useData, usePhotoUrl, TopBar, Footer, Button, IconButton, StepButton, Dialog, DialogButtons,
   ConfirmDialog, CategoryDialog, toast, usePrefs,
 } from '../ui.js';
+import { Icon } from '../icons.js';
 import { QrSvg } from '../qr.js';
 import { Scanner, beep } from '../scanner.js';
 import { PhotoEditor, loadPhoto, toJpeg } from '../photo.js';
@@ -35,6 +36,12 @@ export function EditScreen({ id, code: presetCode }) {
   const [askLeave, setAskLeave] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const nameRef = useRef(null);
+  const noteRef = useRef(null);
+  // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
+  const grow = (el) => { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+  useEffect(() => { grow(nameRef.current); grow(noteRef.current); }, []);
   const keptUrl = usePhotoUrl(original?.photo);
   const camInput = useRef(null);
   const libInput = useRef(null);
@@ -82,7 +89,7 @@ export function EditScreen({ id, code: presetCode }) {
 
   const save = async () => {
     const trimmed = name.trim();
-    const nErr = trimmed ? null : 'Geef een naam in. Bv. HDMI-kabel 2 m';
+    const nErr = trimmed ? null : 'Geef een naam in.';
     const other = store.itemByCode(code);
     const cErr = !code.trim() ? 'Een artikel heeft een code nodig. Tik op Nieuwe code.'
       : other && other.id !== itemId ? `Deze code hoort al bij «${other.name}». Scan een andere code of maak een nieuwe.` : null;
@@ -112,63 +119,86 @@ export function EditScreen({ id, code: presetCode }) {
 
   const leave = () => (dirty ? setAskLeave(true) : back());
 
+  // Fotomenu: de keuzes onder één tik op de foto, i.p.v. vier knoppen onder elkaar.
+  const pick = (input) => { setPhotoMenu(false); input.current.click(); };
+
   return html`<div class="screen">
     <${TopBar} title=${original ? 'Artikel wijzigen' : 'Nieuw artikel'} onBack=${leave} />
-    <main class="content form">
-      <${TextField} label="Naam" value=${name} onInput=${(v) => { setName(v); setNameError(null); }} hint="Bv. HDMI-kabel 2 m" error=${nameError} />
-
-      <div class="field">
-        <span class="field-label">Categorie</span>
-        <div class="chip-wrap">
-          ${data.categories.map((c) => html`<${FilterChip} key=${c.id} selected=${categoryOf(data, category).id === c.id}
-            onClick=${() => setCategory(c.id)}>${c.name}<//>`)}
-          <${FilterChip} onClick=${() => setNewCategory(true)}>+ Nieuwe…<//>
+    <main class="content ed">
+      <div class="ed-hero">
+        <button type="button" class="ed-photo" aria-label=${shownPhoto ? 'Foto wijzigen' : 'Foto toevoegen'} onClick=${() => setPhotoMenu(true)}>
+          ${shownPhoto ? html`<img src=${shownPhoto} alt="" />`
+            : html`<span class="ed-photo-empty"><${Icon} name=${busy ? 'i_refresh' : 'i_camera'} size=${28} /><span>${busy ? 'Bezig…' : 'Foto'}</span></span>`}
+          ${shownPhoto && html`<span class="ed-photo-badge"><${Icon} name="i_edit" size=${16} /></span>`}
+        </button>
+        <div class="ed-name">
+          <textarea rows="1" placeholder="Naam van het artikel" value=${name} enterkeyhint="done" class=${nameError ? 'err' : ''}
+            ref=${nameRef}
+            onInput=${(e) => { setName(e.currentTarget.value.replace(/\n/g, ' ')); setNameError(null); grow(e.currentTarget); }}
+            onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}></textarea>
+          ${nameError && html`<span class="small tone-text-red">${nameError}</span>`}
         </div>
       </div>
 
-      <${NumberField} label="Aantal" value=${quantity} onChange=${setQuantity} help="Hoeveel je er nu in de bestelwagen hebt." />
-      <${NumberField} label="Minimumvoorraad" value=${minimum} onChange=${setMinimum}
-        help="Heb je er minder dan dit, dan komt het artikel op de lijst Bijvullen. 0 = geen minimum." />
-      <${TextField} label="Plaats in de bestelwagen" value=${location} onInput=${setLocation} hint="Bv. Rek links · bak 3" help="Niet verplicht." />
+      <div class="chip-row">
+        ${data.categories.map((c) => html`<button type="button" key=${c.id}
+          class=${'fchip ed-cat' + (categoryOf(data, category).id === c.id ? ' on' : '')} onClick=${() => setCategory(c.id)}>
+          <${Icon} name=${c.icon} size=${16} />${c.name}</button>`)}
+        <button type="button" class="fchip ed-cat" onClick=${() => setNewCategory(true)}><${Icon} name="i_add" size=${16} />Nieuw</button>
+      </div>
 
-      <${Card}>
-        <${SectionHeader}>Foto<//>
-        ${shownPhoto ? html`<img class="form-photo" src=${shownPhoto} alt="Foto" />`
-          : html`<p class="small faint">${busy ? 'Bezig…' : 'Nog geen foto. Een foto helpt om het juiste product snel te herkennen.'}</p>`}
-        <input ref=${camInput} type="file" accept="image/*" capture="environment" hidden onChange=${onFile} />
-        <input ref=${libInput} type="file" accept="image/*" hidden onChange=${onFile} />
-        <div class="btn-row wrap">
-          <${Button} icon="i_camera" onClick=${() => camInput.current.click()}>Foto maken<//>
-          <${Button} icon="i_gallery" onClick=${() => libInput.current.click()}>Uit fotobibliotheek…<//>
-          ${shownPhoto && html`<${Button} icon="i_crop" onClick=${editCurrent}>Bewerken…<//>`}
-          ${shownPhoto && html`<${Button} kind="ghost" cls="danger-text" onClick=${() => setPhoto(null)}>Foto weghalen<//>`}
+      <div class="group">
+        <div class="g-row">
+          <span class="g-label">Aantal</span>
+          <${Stepper} value=${quantity} onChange=${setQuantity} label="Aantal" />
         </div>
-      <//>
+        <div class="g-row">
+          <span class="g-label">Minimum<small>${minimum === 0 ? 'Uit' : 'Bijvullen eronder'}</small></span>
+          <${Stepper} value=${minimum} onChange=${setMinimum} label="Minimum" />
+        </div>
+      </div>
 
-      <${Card}>
-        <${SectionHeader}>QR-code<//>
-        <div class="qr-row">
-          <div class="qr-box"><${QrSvg} text=${code || ' '} size=${96} /></div>
-          <div>
-            <div class="mono">${code}</div>
-            <div class="small faint">Je krijgt automatisch een nieuwe code. Heeft het artikel al een QR-code, scan die dan om ze te koppelen.</div>
-          </div>
-        </div>
-        ${codeError && html`<p class="small tone-text-red">${codeError}</p>`}
-        <div class="btn-row wrap">
-          <${Button} icon="i_scan" onClick=${() => setScanning(true)}>Bestaande code scannen…<//>
-          <${Button} kind="ghost" icon="i_refresh" onClick=${() => { setCode(store.newCode()); setCodeError(null); }}>Nieuwe code<//>
-        </div>
-      <//>
+      <div class="group">
+        <label class="g-row">
+          <${Icon} name="i_place" size=${20} />
+          <input class="g-input" type="text" enterkeyhint="done" placeholder="Plaats, bv. rek links · bak 3" value=${location}
+            onInput=${(e) => setLocation(e.currentTarget.value)} onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+        </label>
+        <label class="g-row top">
+          <${Icon} name="i_info" size=${20} />
+          <textarea class="g-input" rows="1" placeholder="Notitie, bv. bestelnummer of lengte" value=${note}
+            ref=${noteRef} onInput=${(e) => { setNote(e.currentTarget.value); grow(e.currentTarget); }}></textarea>
+        </label>
+      </div>
 
-      <${TextField} label="Notitie" value=${note} onInput=${setNote} multiline hint="Bv. bestelnummer, leverancier, lengte…" help="Niet verplicht." />
+      <div class="group">
+        <div class="g-row">
+          <span class="qr-box"><${QrSvg} text=${code || ' '} size=${44} /></span>
+          <span class="g-label"><span class="mono">${code}</span><small>QR-code</small></span>
+          <${IconButton} icon="i_scan" label="Bestaande code scannen" onClick=${() => setScanning(true)} />
+          <${IconButton} icon="i_refresh" label="Nieuwe code" onClick=${() => { setCode(store.newCode()); setCodeError(null); }} />
+        </div>
+      </div>
+      ${codeError ? html`<p class="small tone-text-red">${codeError}</p>`
+        : !original && html`<p class="small faint ed-hint">Zit er al een QR-label op het artikel? Scan het met de knop naast de code.</p>`}
 
       ${original && html`<${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskDelete(true)}>Artikel verwijderen…<//>`}
+      <input ref=${camInput} type="file" accept="image/*" capture="environment" hidden onChange=${onFile} />
+      <input ref=${libInput} type="file" accept="image/*" hidden onChange=${onFile} />
     </main>
     <${Footer}>
       <${Button} kind="secondary" onClick=${leave}>Annuleren<//>
       <${Button} kind="primary" disabled=${busy} onClick=${save}>Bewaren<//>
     <//>
+
+    ${photoMenu && html`<${Dialog} onDismiss=${() => setPhotoMenu(false)} cls="sheet">
+      <div class="sheet-title">Foto</div>
+      <button type="button" class="sheet-btn" onClick=${() => pick(camInput)}><${Icon} name="i_camera" />Foto maken</button>
+      <button type="button" class="sheet-btn" onClick=${() => pick(libInput)}><${Icon} name="i_gallery" />Uit fotobibliotheek</button>
+      ${shownPhoto && html`<button type="button" class="sheet-btn" onClick=${() => { setPhotoMenu(false); editCurrent(); }}><${Icon} name="i_crop" />Bijsnijden of draaien</button>`}
+      ${shownPhoto && html`<button type="button" class="sheet-btn danger-text" onClick=${() => { setPhotoMenu(false); setPhoto(null); }}><${Icon} name="i_delete" />Foto weghalen</button>`}
+      <${DialogButtons}><${Button} onClick=${() => setPhotoMenu(false)}>Annuleren<//><//>
+    <//>`}
 
     ${editing && html`<${PhotoEditor} original=${editing.canvas} onDone=${(res) => {
       const { canvas, fresh } = editing;
@@ -202,5 +232,17 @@ export function EditScreen({ id, code: presetCode }) {
     ${askLeave && html`<${ConfirmDialog} kind="warning" icon="i_warning" title="Niet bewaren?"
       text="Je wijzigingen gaan verloren." confirmLabel="Niet bewaren" dismissLabel="Verder wijzigen"
       onConfirm=${() => { setAskLeave(false); back(); }} onDismiss=${() => setAskLeave(false)} />`}
+  </div>`;
+}
+
+/** Compacte − aantal + voor in een rij; het getal kan je ook intikken. */
+function Stepper({ value, onChange, label }) {
+  return html`<div class="stepper">
+    <${StepButton} add=${false} size=${40} disabled=${value <= 0} onClick=${() => onChange(Math.max(0, value - 1))} label=${label + ' min één'} />
+    <input type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" aria-label=${label} value=${String(value)}
+      onFocus=${(e) => e.currentTarget.select()}
+      onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      onInput=${(e) => onChange(parseInt(e.currentTarget.value.replace(/\D/g, '').slice(0, 6) || '0', 10))} />
+    <${StepButton} add=${true} size=${40} onClick=${() => onChange(value + 1)} label=${label + ' plus één'} />
   </div>`;
 }
