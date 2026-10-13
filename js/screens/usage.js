@@ -1,7 +1,8 @@
 // ---- Verbruik
 // Dagoverzicht van wat er uit de bestelwagen ging (bij de klant gebruikt), uit het logboek van aantallen.
-// Per artikel telt wat er die dag netto af ging: per ongeluk − en daarna terug + valt weg,
-// maar aanvullen uit het magazijn (Klaar op de aanvullijst) trekt niets af van wat je gebruikte.
+// Elke verlaging telt als gebruik. Een + kort na een − (binnen 5 minuten) geldt als correctie en
+// schrapt die −; een + die niet direct volgt op een − (bijtellen, nieuw artikel, aanvullen) raakt het
+// verbruik niet. Zo telt "+5 erbij, daarna −4 bij de klant" gewoon als 4 gebruikt.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
 import { collator, categoryOf } from '../store.js';
@@ -10,6 +11,7 @@ import { shareText } from '../files.js';
 import { go, back } from '../router.js';
 
 const DAY = 24 * 60 * 60 * 1000;
+const UNDO_WINDOW = 5 * 60 * 1000;
 const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 /** Een dag verder of terug, ook rond de overgang naar zomer- of wintertijd. */
 const shiftDay = (day, n) => startOfDay(day + n * DAY + 12 * 60 * 60 * 1000);
@@ -25,11 +27,25 @@ function dayLabel(day) {
 /** Gebruikte stuks per artikel op [day]: { itemId: aantal }. */
 function usageOn(data, day) {
   const end = shiftDay(day, 1);
-  const net = {};
-  for (const m of data.movements) {
-    if (!m.restock && m.time >= day && m.time < end) net[m.itemId] = (net[m.itemId] ?? 0) - m.delta;
+  const open = {}; // per artikel: verlagingen van die dag die nog door een correctie geschrapt kunnen worden
+  const moves = data.movements.filter((m) => m.time >= day && m.time < end).sort((a, b) => a.time - b.time);
+  for (const m of moves) {
+    const list = (open[m.itemId] ??= []);
+    if (m.delta < 0) { list.push({ n: -m.delta, time: m.time }); continue; }
+    if (m.restock) continue;
+    // Correctie: schrap recente verlagingen, de laatste eerst.
+    let left = m.delta;
+    for (let i = list.length - 1; i >= 0 && left > 0 && m.time - list[i].time <= UNDO_WINDOW; i--) {
+      const take = Math.min(left, list[i].n);
+      list[i].n -= take; left -= take;
+    }
   }
-  return Object.fromEntries(Object.entries(net).filter(([, n]) => n > 0));
+  const used = {};
+  for (const [id, list] of Object.entries(open)) {
+    const n = list.reduce((s, x) => s + x.n, 0);
+    if (n > 0) used[id] = n;
+  }
+  return used;
 }
 
 export function UsageScreen() {
@@ -105,7 +121,7 @@ export function UsageScreen() {
           </div>
         <//>
         ${list}
-        <p class="small faint">Tik op het deelicoon bovenaan om dit overzicht door te sturen, bv. naar het bureau. Per ongeluk verlaagd en meteen terug verhoogd? Dan valt het weg. Aanvullen uit het magazijn telt niet mee.</p>`}
+        <p class="small faint">Tik op het deelicoon bovenaan om dit overzicht door te sturen, bv. naar het bureau. Per ongeluk verlaagd en binnen 5 minuten terug verhoogd? Dan valt het weg. Wat je bijtelt of aanvult, verandert niets aan wat je gebruikte.</p>`}
     </main>
   </div>`;
 }
