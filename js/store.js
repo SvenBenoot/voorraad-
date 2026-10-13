@@ -64,6 +64,7 @@ export function normalize(raw) {
     movements: (raw?.movements ?? []).map((m) => ({
       itemId: m.itemId, delta: m.delta | 0, newQuantity: m.newQuantity | 0, time: m.time ?? now,
       ...(m.restock ? { restock: true } : {}),
+      ...(m.name ? { name: String(m.name) } : {}),
     })),
     categories: raw?.categories?.length ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice(),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
@@ -128,7 +129,13 @@ export const store = {
     if (!next || next === data) return;
     data = next;
     emit();
-    await tx('kv', 'readwrite', (s) => s.put(data, 'data'));
+    try {
+      await tx('kv', 'readwrite', (s) => s.put(data, 'data'));
+    } catch (e) {
+      // Bv. geheugen vol: zeggen, anders denk je dat alles bewaard is.
+      window.dispatchEvent(new CustomEvent('voorraad-fout', { detail: 'Bewaren lukte niet. Is het geheugen van je iPhone vol? Maak plaats en probeer opnieuw.' }));
+      throw e;
+    }
   },
 
   item(id) { return data.items.find((i) => i.id === id); },
@@ -187,8 +194,10 @@ export const store = {
   async delete(id) {
     const photo = this.item(id)?.photo;
     await this.update((d) => {
+      const name = d.items.find((i) => i.id === id)?.name ?? '';
       d.items = d.items.filter((i) => i.id !== id);
-      d.movements = d.movements.filter((m) => m.itemId !== id);
+      // Logboek houden (met de naam erbij), zodat Verbruik van die dag blijft kloppen.
+      d.movements = d.movements.map((m) => (m.itemId === id ? { ...m, name } : m));
       d.pickList = d.pickList.filter((p) => p.itemId !== id);
       return d;
     });

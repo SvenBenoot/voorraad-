@@ -275,7 +275,12 @@ export function toast(text) { toastSet?.(text); }
 export function ToastHost() {
   const [text, setText] = useState(null);
   const timer = useRef();
-  toastSet = (t) => { setText(t); clearTimeout(timer.current); timer.current = setTimeout(() => setText(null), 2600); };
+  toastSet = (t, ms = 2600) => { setText(t); clearTimeout(timer.current); timer.current = setTimeout(() => setText(null), ms); };
+  useEffect(() => {
+    const onError = (e) => toastSet(e.detail, 6000);
+    window.addEventListener('voorraad-fout', onError);
+    return () => window.removeEventListener('voorraad-fout', onError);
+  }, []);
   return text ? html`<div class="toast" role="status">${text}</div>` : null;
 }
 

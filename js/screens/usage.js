@@ -5,7 +5,7 @@
 // verbruik niet. Zo telt "+5 erbij, daarna −4 bij de klant" gewoon als 4 gebruikt.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { collator, categoryOf } from '../store.js';
+import { collator, categoryOf, OTHER } from '../store.js';
 import { useData, TopBar, IconButton, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, toast, plural } from '../ui.js';
 import { shareText } from '../files.js';
 import { go, back } from '../router.js';
@@ -57,8 +57,13 @@ export function UsageScreen() {
 
   const used = usageOn(data, day);
   const catOrder = Object.fromEntries(data.categories.map((c, i) => [c.id, i]));
+  // Een intussen verwijderd artikel blijft staan, met de naam uit het logboek.
+  const gone = (id) => {
+    const name = data.movements.find((m) => m.itemId === id && m.name)?.name;
+    return name ? { id, name: name + ' (verwijderd)', category: OTHER, quantity: 0, location: '', photo: null, deleted: true } : null;
+  };
   const rows = Object.entries(used)
-    .map(([id, n]) => [data.items.find((i) => i.id === id), n])
+    .map(([id, n]) => [data.items.find((i) => i.id === id) ?? gone(id), n])
     .filter(([it]) => it)
     .sort(([a], [b]) => (catOrder[categoryOf(data, a).id] ?? 1e9) - (catOrder[categoryOf(data, b).id] ?? 1e9) || collator.compare(a.name, b.name));
   const total = rows.reduce((s, [, n]) => s + n, 0);
@@ -85,11 +90,11 @@ export function UsageScreen() {
   rows.forEach(([it, n], i) => {
     const cat = categoryOf(data, it);
     if (i === 0 || categoryOf(data, rows[i - 1][0]).id !== cat.id) list.push(html`<${SectionHeader} key=${'kop-' + cat.id}>${cat.name}<//>`);
-    list.push(html`<${Card} key=${it.id} cls="usage-row" onClick=${() => go('/artikel/' + it.id)}>
+    list.push(html`<${Card} key=${it.id} cls="usage-row" onClick=${it.deleted ? null : () => go('/artikel/' + it.id)}>
       <${ItemIcon} category=${cat} photo=${it.photo} size=${40} />
       <div class="pick-body">
         <div class="card-title clamp2">${it.name}</div>
-        <div class="small faint">Nu nog ${it.quantity}${it.location ? ' · ' + it.location : ''}</div>
+        <div class="small faint">${it.deleted ? 'Niet meer in je voorraad' : `Nu nog ${it.quantity}${it.location ? ' · ' + it.location : ''}`}</div>
       </div>
       <${BigNumber} value=${'−' + n} size=${26} />
     <//>`);

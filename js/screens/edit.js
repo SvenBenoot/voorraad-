@@ -90,16 +90,22 @@ export function EditScreen({ id, code: presetCode }) {
     setCodeError(cErr);
     if (nErr || cErr) return;
     setBusy(true);
-    let photoName = original?.photo ?? null;
-    if (photo instanceof Blob) photoName = await store.savePhoto(itemId, photo);
-    else if (photo === null) photoName = null;
-    const now = Date.now();
-    await store.save({
-      ...(original ?? { id: itemId, createdAt: now }),
-      code: code.trim(), name: trimmed, category, quantity, minimum,
-      location: location.trim(), note: note.trim(), photo: photoName,
-    });
-    if (original?.photo && original.photo !== photoName) await store.deletePhoto(original.photo);
+    try {
+      let photoName = original?.photo ?? null;
+      if (photo instanceof Blob) photoName = await store.savePhoto(itemId, photo);
+      else if (photo === null) photoName = null;
+      const now = Date.now();
+      await store.save({
+        ...(original ?? { id: itemId, createdAt: now }),
+        code: code.trim(), name: trimmed, category, quantity, minimum,
+        location: location.trim(), note: note.trim(), photo: photoName,
+      });
+      if (original?.photo && original.photo !== photoName) await store.deletePhoto(original.photo);
+    } catch {
+      // De melding zelf komt van store.update; hier enkel de knop terug vrijgeven.
+      setBusy(false);
+      return;
+    }
     if (original) back();
     else go('/artikel/' + itemId, { replace: true });
   };
@@ -189,7 +195,7 @@ export function EditScreen({ id, code: presetCode }) {
       onDismiss=${() => setNewCategory(false)} />`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
-      text="Het artikel, zijn foto en de geschiedenis worden gewist. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); go('/', { replace: true }); }}
       onDismiss=${() => setAskDelete(false)} />`}
 
