@@ -37,6 +37,7 @@ export function EditScreen({ id, code: presetCode }) {
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
+  const [catMenu, setCatMenu] = useState(false);
   const nameRef = useRef(null);
   const noteRef = useRef(null);
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
@@ -140,14 +141,12 @@ export function EditScreen({ id, code: presetCode }) {
         </div>
       </div>
 
-      <div class="chip-row">
-        ${data.categories.map((c) => html`<button type="button" key=${c.id}
-          class=${'fchip ed-cat' + (categoryOf(data, category).id === c.id ? ' on' : '')} onClick=${() => setCategory(c.id)}>
-          <${Icon} name=${c.icon} size=${16} />${c.name}</button>`)}
-        <button type="button" class="fchip ed-cat" onClick=${() => setNewCategory(true)}><${Icon} name="i_add" size=${16} />Nieuw</button>
-      </div>
-
       <div class="group">
+        <button type="button" class="g-row g-btn" onClick=${() => setCatMenu(true)}>
+          <span class="g-label">Categorie</span>
+          <span class="g-value"><${Icon} name=${categoryOf(data, category).icon} size=${18} />${categoryOf(data, category).name}</span>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
         <div class="g-row">
           <span class="g-label">Aantal</span>
           <${Stepper} value=${quantity} onChange=${setQuantity} label="Aantal" />
@@ -190,6 +189,16 @@ export function EditScreen({ id, code: presetCode }) {
       <${Button} kind="secondary" onClick=${leave}>Annuleren<//>
       <${Button} kind="primary" disabled=${busy} onClick=${save}>Bewaren<//>
     <//>
+
+    ${catMenu && html`<${Dialog} onDismiss=${() => setCatMenu(false)} cls="sheet">
+      <div class="sheet-title">Categorie</div>
+      ${data.categories.map((c) => html`<button type="button" key=${c.id} class="sheet-btn" onClick=${() => { setCategory(c.id); setCatMenu(false); }}>
+        <${Icon} name=${c.icon} /><span class="sheet-grow">${c.name}</span>
+        ${categoryOf(data, category).id === c.id && html`<${Icon} name="i_check" />`}
+      </button>`)}
+      <button type="button" class="sheet-btn" onClick=${() => { setCatMenu(false); setNewCategory(true); }}><${Icon} name="i_add" />Nieuwe categorie…</button>
+      <${DialogButtons}><${Button} onClick=${() => setCatMenu(false)}>Annuleren<//><//>
+    <//>`}
 
     ${photoMenu && html`<${Dialog} onDismiss=${() => setPhotoMenu(false)} cls="sheet">
       <div class="sheet-title">Foto</div>
