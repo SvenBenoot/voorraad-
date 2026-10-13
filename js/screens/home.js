@@ -63,6 +63,7 @@ export function HomeScreen() {
     <${BrandBar} title="Voorraad">
       <${IconButton} icon="i_add" label="Artikel toevoegen" size=${28} onClick=${() => go('/nieuw')} />
       <${IconButton} icon="i_checklist" label="Aanvullen" onClick=${() => go('/aanvullen')} />
+      <${IconButton} icon="i_history" label="Verbruik per dag" onClick=${() => go('/verbruik')} />
       <${IconButton} icon="i_settings" label="Instellingen" onClick=${() => go('/instellingen')} />
     <//>
     <main class="content">
