@@ -11,6 +11,7 @@ import { EditScreen } from './screens/edit.js';
 import { ScanScreen } from './screens/scan.js';
 import { RestockScreen } from './screens/restock.js';
 import { SettingsScreen } from './screens/settings.js';
+import { UsageScreen } from './screens/usage.js';
 
 function screenFor(path) {
   const [, a, b] = path.split('/');
@@ -20,6 +21,7 @@ function screenFor(path) {
     case 'nieuw': return html`<${EditScreen} key=${'n' + (b ?? '')} code=${b ? decodeURIComponent(b) : undefined} />`;
     case 'scan': return html`<${ScanScreen} />`;
     case 'aanvullen': return html`<${RestockScreen} />`;
+    case 'verbruik': return html`<${UsageScreen} />`;
     case 'instellingen': return html`<${SettingsScreen} />`;
     default: return html`<${HomeScreen} />`;
   }

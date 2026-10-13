@@ -63,6 +63,7 @@ export function normalize(raw) {
     })),
     movements: (raw?.movements ?? []).map((m) => ({
       itemId: m.itemId, delta: m.delta | 0, newQuantity: m.newQuantity | 0, time: m.time ?? now,
+      ...(m.restock ? { restock: true } : {}),
     })),
     categories: raw?.categories?.length ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice(),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
@@ -285,7 +286,7 @@ export const store = {
   finishPickList() {
     return this.update((d) => {
       const done = Object.fromEntries(d.pickList.filter((p) => p.done).map((p) => [p.itemId, p.amount]));
-      const next = applyDeltas(d, done);
+      const next = applyDeltas(d, done, { restock: true });
       next.pickList = d.pickList.filter((p) => !p.done);
       return next;
     });
@@ -344,7 +345,8 @@ export const store = {
   },
 };
 
-function applyDeltas(d, deltas) {
+/** [extra] komt bij elke regel in het logboek, bv. { restock: true } voor aanvullen uit het magazijn. */
+function applyDeltas(d, deltas, extra = {}) {
   const now = Date.now();
   const moves = [];
   d.items = d.items.map((item) => {
@@ -352,7 +354,7 @@ function applyDeltas(d, deltas) {
     if (delta == null) return item;
     const q = Math.max(0, item.quantity + delta);
     if (q === item.quantity) return item;
-    moves.push({ itemId: item.id, delta: q - item.quantity, newQuantity: q, time: now });
+    moves.push({ itemId: item.id, delta: q - item.quantity, newQuantity: q, time: now, ...extra });
     return { ...item, quantity: q, updatedAt: now };
   });
   d.movements = [...d.movements, ...moves].slice(-MAX_MOVEMENTS);
