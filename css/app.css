@@ -449,6 +449,8 @@ p { margin: 4px 0; }
   background: var(--accent-bg); color: var(--accent); margin-top: 2px; }
 .g-field-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .g-cap { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); }
+.g-field-value { font-size: 16px; padding-top: 2px; }
+.g-field-chev { align-self: center; }
 .g-field .g-input { flex: none; padding: 2px 0 0; } /* in een kolom zou flex: 1 de hoogte van het meegroeien negeren */
 .stepper { display: flex; align-items: center; gap: 2px; }
 .stepper input { width: 58px; border: 0; outline: none; background: none; text-align: center; color: var(--text);
@@ -465,7 +467,6 @@ p { margin: 4px 0; }
 @media (max-width: 359px) { .ed-icon { width: 80px; height: 80px; } .ed-icon .item-icon { width: 80px !important; height: 80px !important; } .stepper input { width: 46px; } .g-row { padding-left: 14px; } }
 .g-btn { width: 100%; border: 0; background: none; color: inherit; text-align: left; font: inherit; }
 .g-btn:active { background: var(--hover); }
-.g-value { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 16px; font-weight: 600; }
 .chev { flex: none; color: var(--faint); margin-right: 6px; }
 .sheet-grow { flex: 1; }
 

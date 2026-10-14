@@ -128,11 +128,17 @@ export function EditScreen({ id, code: presetCode, product }) {
       </div>
 
       <div class="group">
-        <button type="button" class="g-row g-btn" onClick=${() => setCatMenu(true)}>
-          <span class="g-label">Categorie</span>
-          <span class="g-value">${categoryOf(data, category).name}</span>
-          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button type="button" class="g-row g-btn g-field" onClick=${() => setCatMenu(true)}>
+          <span class="g-field-icon"><${Icon} name="i_category" size=${20} /></span>
+          <span class="g-field-body">
+            <span class="g-cap">Categorie</span>
+            <span class="g-field-value">${categoryOf(data, category).name}</span>
+          </span>
+          <svg class="chev g-field-chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
+      </div>
+
+      <div class="group">
         <div class="g-row">
           <span class="g-label">Aantal</span>
           <${Stepper} value=${quantity} onChange=${setQuantity} label="Aantal" />
