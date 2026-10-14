@@ -144,7 +144,7 @@ export function EditScreen({ id, code: presetCode, product }) {
         </label>
         <label class="g-row top">
           <${Icon} name="i_info" size=${20} />
-          <textarea class="g-input" rows="1" placeholder="Notitie, bv. bestelnummer of lengte" value=${note}
+          <textarea class="g-input note" rows="3" placeholder="Notitie, bv. bestelnummer of lengte" value=${note}
             ref=${noteRef} onInput=${(e) => { setNote(e.currentTarget.value); grow(e.currentTarget); }}></textarea>
         </label>
       </div>

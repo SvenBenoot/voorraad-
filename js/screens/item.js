@@ -65,6 +65,8 @@ export function ItemScreen({ id }) {
         </div>
       <//>
 
+      ${item.note && html`<${SectionHeader}>Notitie<//><${Card}><div class="pre">${item.note}</div><//>`}
+
       <${SectionHeader}>QR-code<//>
       <${Card}>
         <div class="qr-row">
@@ -79,8 +81,6 @@ export function ItemScreen({ id }) {
           <${Button} icon="i_print" onClick=${() => prepare('pdf')}>A4-blad…<//>
         </div>
       <//>
-
-      ${item.note && html`<${SectionHeader}>Notitie<//><${Card}><div class="pre">${item.note}</div><//>`}
 
       ${moves.length > 0 && html`<${SectionHeader}>Laatste wijzigingen<//>
         <${Card} pad=${0}>
