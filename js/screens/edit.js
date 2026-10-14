@@ -12,7 +12,6 @@ import { Scanner, beep } from '../scanner.js';
 import { go, back, backAndReplace } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
 import { BrandPicker } from '../brands.js';
-import { ProductSearch } from './catalog.js';
 
 export function EditScreen({ id, code: presetCode, product }) {
   const data = useData();
@@ -40,7 +39,6 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [iconMenu, setIconMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const [brandMenu, setBrandMenu] = useState(false);
-  const [linking, setLinking] = useState(false);
   const nameRef = useRef(null);
   const noteRef = useRef(null);
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
@@ -121,12 +119,10 @@ export function EditScreen({ id, code: presetCode, product }) {
         </div>
       </div>
 
-      ${original && html`<${Button} kind="ghost" icon="i_inventory" cls="ed-link" onClick=${() => setLinking(true)}>Merk en referentie uit productlijst…<//>`}
-
       <div class="group">
         <button type="button" class="g-row g-btn" onClick=${() => setCatMenu(true)}>
           <span class="g-label">Categorie</span>
-          <span class="g-value"><${Icon} name=${categoryOf(data, category).icon} size=${18} />${categoryOf(data, category).name}</span>
+          <span class="g-value">${categoryOf(data, category).name}</span>
           <svg class="chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="g-row">
@@ -170,37 +166,21 @@ export function EditScreen({ id, code: presetCode, product }) {
       <${Button} kind="primary" disabled=${busy} onClick=${save}>Bewaren<//>
     <//>
 
-    ${linking && html`<${Dialog} onDismiss=${() => setLinking(false)} cls="sheet brand-sheet">
-      <div class="sheet-title">Uit productlijst</div>
-      <div class="brand-list link-list"><${ProductSearch} onPick=${(pr) => {
-        // Naam = referentie, merk erbij; je eigen notitie blijft staan als die er al is. De QR-code blijft dezelfde (label hangt er al).
-        setName(pr.name); setBrand(pr.brand);
-        if (pr.description && pr.description !== pr.name) setNote((v) => v || pr.description);
-        setLinking(false);
-        requestAnimationFrame(() => { grow(nameRef.current); grow(noteRef.current); });
-      }} /></div>
-      <${DialogButtons}><${Button} onClick=${() => setLinking(false)}>Annuleren<//><//>
-    <//>`}
     ${brandMenu && html`<${BrandPicker} value=${brand} onPick=${setBrand} onDismiss=${() => setBrandMenu(false)} />`}
 
     ${catMenu && html`<${Dialog} onDismiss=${() => setCatMenu(false)} cls="sheet">
       <div class="sheet-title">Categorie</div>
       ${data.categories.map((c) => html`<button type="button" key=${c.id} class="sheet-btn" onClick=${() => { setCategory(c.id); setCatMenu(false); }}>
-        <${Icon} name=${c.icon} /><span class="sheet-grow">${c.name}</span>
+        <span class="sheet-grow">${c.name}</span>
         ${categoryOf(data, category).id === c.id && html`<${Icon} name="i_check" />`}
       </button>`)}
-      <button type="button" class="sheet-btn" onClick=${() => { setCatMenu(false); setNewCategory(true); }}><${Icon} name="i_add" />Nieuwe categorie…</button>
+      <button type="button" class="sheet-btn sheet-add" onClick=${() => { setCatMenu(false); setNewCategory(true); }}>Nieuwe categorie…</button>
       <${DialogButtons}><${Button} onClick=${() => setCatMenu(false)}>Annuleren<//><//>
     <//>`}
 
     ${iconMenu && html`<${Dialog} onDismiss=${() => setIconMenu(false)} cls="sheet">
       <div class="sheet-title">Icoon</div>
       <div class="dialog-body icon-pick">
-        <button type="button" class=${'sheet-btn icon-follow' + (icon ? '' : ' on')} onClick=${() => { setIcon(null); setIconMenu(false); }}>
-          <${ItemIcon} category=${categoryOf(data, category)} size=${36} />
-          <span class="sheet-grow">Zoals de categorie<small class="faint"> · ${categoryOf(data, category).name}</small></span>
-          ${!icon && html`<${Icon} name="i_check" />`}
-        </button>
         <${IconGrid} value=${icon} onPick=${(k) => { setIcon(k); setIconMenu(false); }} />
       </div>
       <${DialogButtons}><${Button} onClick=${() => setIconMenu(false)}>Annuleren<//><//>

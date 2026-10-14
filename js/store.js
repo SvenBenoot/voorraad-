@@ -10,6 +10,29 @@ export const DEFAULT_CATEGORIES = [
   { id: 'CONNECTOR', name: 'Fiche', icon: 'connector' },
   { id: 'DEVICE', name: 'Toestel', icon: 'device' },
   { id: 'BIN', name: 'Bakje', icon: 'bin' },
+  // Sinds 1.7 erbij; bestaande gegevens krijgen ze één keer (zie normalize), daarna mag je ze gewoon verwijderen.
+  { id: 'ADAPTER', name: 'Adapter', icon: 'adapter' },
+  { id: 'NETWORK', name: 'Netwerk', icon: 'ethernet' },
+  { id: 'WIRELESS', name: 'Draadloos', icon: 'wifi' },
+  { id: 'POWER', name: 'Stroom', icon: 'powerstrip' },
+  { id: 'BATTERY', name: 'Batterijen', icon: 'battery' },
+  { id: 'MIC', name: 'Microfoon', icon: 'mic' },
+  { id: 'SPEAKER', name: 'Luidspreker', icon: 'speaker' },
+  { id: 'AMP', name: 'Versterker', icon: 'amp' },
+  { id: 'MIXER', name: 'Mixer', icon: 'mixer' },
+  { id: 'SCREEN', name: 'Scherm', icon: 'tv' },
+  { id: 'PROJECTOR', name: 'Projector', icon: 'projector' },
+  { id: 'CAMERA', name: 'Camera', icon: 'video' },
+  { id: 'LIGHT', name: 'Licht', icon: 'spot' },
+  { id: 'COMPUTER', name: 'Computer', icon: 'computer' },
+  { id: 'REMOTE', name: 'Afstandsbediening', icon: 'remote' },
+  { id: 'MOUNT', name: 'Beugels en statieven', icon: 'tripod' },
+  { id: 'RACK', name: 'Rack', icon: 'rack' },
+  { id: 'WALLPLATE', name: 'Wandplaat', icon: 'wallplate' },
+  { id: 'FIXING', name: 'Bevestiging', icon: 'screw' },
+  { id: 'TAPE', name: 'Tape en tie-wraps', icon: 'cabletie' },
+  { id: 'TOOL', name: 'Gereedschap', icon: 'tool' },
+  { id: 'CONSUMABLE', name: 'Verbruiksmateriaal', icon: 'box' },
   { id: OTHER, name: 'Andere', icon: 'other' },
 ];
 
@@ -76,6 +99,15 @@ export function normalize(raw) {
     brands: (raw?.brands ?? []).map((b) => String(b).trim()).filter(Boolean),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
   };
+  // De categorieën die er in 1.7 bijkwamen één keer toevoegen (vóór "Andere"), tenzij er al een met die naam is.
+  if (raw?.categories?.length && !raw.extraCategories) {
+    const names = new Set(d.categories.map((c) => c.name.trim().toLowerCase()));
+    const ids = new Set(d.categories.map((c) => c.id));
+    const add = DEFAULT_CATEGORIES.filter((c) => !ids.has(c.id) && !names.has(c.name.toLowerCase()) && c.id !== OTHER);
+    const at = d.categories.findIndex((c) => c.id === OTHER);
+    d.categories.splice(at < 0 ? d.categories.length : at, 0, ...add);
+  }
+  d.extraCategories = true;
   // "Andere" kan niet weg: daar komen artikels van een verwijderde categorie terecht.
   if (!d.categories.some((c) => c.id === OTHER)) d.categories.push(DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]);
   return d;

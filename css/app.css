@@ -328,13 +328,14 @@ p { margin: 4px 0; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: scale(.96); } }
 
-.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 8px 6px; max-height: 300px; overflow-y: auto; }
-.icon-opt { border: 0; background: none; display: flex; flex-direction: column; align-items: center; padding: 4px 0; border-radius: 10px; color: var(--faint); }
+.icon-picker { display: flex; flex-direction: column; gap: 10px; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 8px 4px; align-content: start;
+  height: min(300px, 40vh); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0; }
+.icon-opt { border: 0; background: none; display: flex; justify-content: center; padding: 2px 0; border-radius: 10px; }
+.icon-none { grid-column: 1 / -1; text-align: center; margin: 16px 0; }
 .icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #14272F;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
 .icon-opt.on .icon-box { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
-.icon-opt.on { color: var(--accent); }
-.icon-name { font-size: 11px; margin-top: 2px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .qd-head { display: flex; gap: 14px; align-items: center; }
 .after { display: flex; align-items: center; justify-content: space-between; border-radius: 10px; padding: 10px 14px; }
@@ -485,10 +486,6 @@ p { margin: 4px 0; }
 .brand-filter { max-width: 40%; }
 .brand-filter span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brand-filter.on { color: var(--accent); background: var(--accent-bg); }
-.ed-link { align-self: flex-start; margin: -4px 0 -2px -10px; }
-.link-list { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-.link-list .product-search { position: sticky; top: 0; z-index: 1; background: var(--card); padding: 2px 0 6px; }
 
-.icon-pick { padding: 4px 12px 12px; gap: 10px; }
-.icon-pick .icon-follow { border-top: 0; border-radius: 12px; padding: 0 10px; background: var(--hover); }
-.icon-pick .icon-follow small { font-size: 13px; }
+.icon-pick { padding: 4px 12px 12px; }
+.sheet-btn.sheet-add { color: var(--accent); font-weight: 600; }

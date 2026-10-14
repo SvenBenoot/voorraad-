@@ -256,15 +256,23 @@ export function CategoryDialog({ existing, takenNames, onSave, onDismiss }) {
   <//>`;
 }
 
-/** Raster met alle iconen, in de stijl van het app-logo. Gebruikt voor categorieën en artikels. */
+/** Raster met alle iconen, in de stijl van het app-logo, met een zoekveld. Gebruikt voor categorieën en artikels. */
 export function IconGrid({ value, onPick }) {
-  return html`<div class="icon-grid">
-    ${CATEGORY_ICONS.map((o) => html`<button type="button" key=${o.key} class=${'icon-opt' + (o.key === value ? ' on' : '')}
-      aria-pressed=${o.key === value} onClick=${() => onPick(o.key)}>
-      <span class="icon-box"><${GradientIcon} name=${o.key} size=${24} /></span><span class="icon-name">${o.label}</span>
-    </button>`)}
+  const [q, setQ] = useState('');
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  const list = words.length ? CATEGORY_ICONS.filter((o) => words.every((w) => fold(o.find).includes(w))) : CATEGORY_ICONS;
+  return html`<div class="icon-picker">
+    <${SearchField} value=${q} onInput=${setQ} hint="Icoon zoeken, bv. kabel" />
+    <div class="icon-grid">
+      ${list.map((o) => html`<button type="button" key=${o.key} class=${'icon-opt' + (o.key === value ? ' on' : '')}
+        aria-pressed=${o.key === value} aria-label=${o.label} title=${o.label} onClick=${() => onPick(o.key)}>
+        <span class="icon-box"><${GradientIcon} name=${o.key} size=${24} /></span>
+      </button>`)}
+      ${!list.length && html`<p class="small faint icon-none">Geen icoon gevonden.</p>`}
+    </div>
   </div>`;
 }
+const fold = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 // ---- korte melding onderaan
 
