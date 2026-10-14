@@ -20,6 +20,14 @@ export function back() {
   else go('/', { replace: true });
 }
 
+/** Terug naar het startscherm, en de schermen ertussen uit de geschiedenis (Terug gaat dan niet terug naar het artikel). */
+export function home() {
+  const depth = history.state?.depth ?? 0;
+  if (depth < 1) { go('/', { replace: true }); return; }
+  window.addEventListener('popstate', () => { if (current() !== '/') go('/', { replace: true }); }, { once: true });
+  history.go(-depth);
+}
+
 /** Eén scherm terug en dat scherm vervangen door [path], bv. Nieuw artikel → keuzelijst wegdoen na Bewaren. */
 export function backAndReplace(path) {
   if ((history.state?.depth ?? 0) < 1) { go(path, { replace: true }); return; }
