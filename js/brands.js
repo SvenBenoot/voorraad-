@@ -38,6 +38,10 @@ export function BrandPicker({ value, onPick, onDismiss }) {
   const hits = words.length ? brands.filter((b) => words.every((w) => b.toLowerCase().includes(w))) : brands;
   const exact = q && brands.some((b) => b.toLowerCase() === q.toLowerCase());
 
+  // Merken die je al gebruikt staan vooraan, met hoeveel artikels.
+  const used = new Map();
+  for (const it of store.data.items) { const k = (it.brand ?? '').trim().toLowerCase(); if (k) used.set(k, (used.get(k) ?? 0) + 1); }
+  hits.sort((a, b) => !used.has(a.toLowerCase()) - !used.has(b.toLowerCase()));
   const pick = (b) => { onPick(b); onDismiss(); };
   const addNew = () => { store.addBrands([q]).catch(() => {}); pick(q); };
 
@@ -47,14 +51,21 @@ export function BrandPicker({ value, onPick, onDismiss }) {
       <${SearchField} value=${query} onInput=${setQuery} hint="Zoek of typ een nieuw merk" />
     </div>
     <div class="brand-list">
-      ${!q && value && html`<button type="button" class="sheet-btn" onClick=${() => pick('')}>
-        <${Icon} name="i_close" /><span class="sheet-grow">Geen merk</span></button>`}
-      ${hits.map((b) => html`<button type="button" key=${b} class="sheet-btn" onClick=${() => pick(b)}>
-        <span class="sheet-grow">${b}</span>
-        ${value.toLowerCase() === b.toLowerCase() && html`<${Icon} name="i_check" />`}
-      </button>`)}
-      ${q && !exact && html`<button type="button" class="sheet-btn" onClick=${addNew}>
-        <${Icon} name="i_add" /><span class="sheet-grow">«${q}» toevoegen als nieuw merk</span></button>`}
+      <div class="pick-grid">
+        ${!q && value && html`<button type="button" class="pick-tile pick-new" onClick=${() => pick('')}>
+          <span class="pick-name"><${Icon} name="i_close" size=${18} />Geen merk</span><span class="pick-sub">Merk weghalen</span></button>`}
+        ${hits.map((b) => {
+          const on = value.toLowerCase() === b.toLowerCase();
+          const n = used.get(b.toLowerCase());
+          return html`<button type="button" key=${b} class=${'pick-tile' + (on ? ' on' : '')} aria-pressed=${on} onClick=${() => pick(b)}>
+            <span class="pick-name">${b}</span>
+            ${n && html`<span class="pick-sub">${n} ${n === 1 ? 'artikel' : 'artikels'}</span>`}
+            ${on && html`<span class="pick-check"><${Icon} name="i_check" size=${16} /></span>`}
+          </button>`;
+        })}
+        ${q && !exact && html`<button type="button" class="pick-tile pick-new" onClick=${addNew}>
+          <span class="pick-name"><${Icon} name="i_add" size=${18} />«${q}»</span><span class="pick-sub">Nieuw merk toevoegen</span></button>`}
+      </div>
       ${!q && html`<p class="small faint brand-tip">Staat je merk er niet bij? Typ het in het zoekveld en tik op toevoegen.</p>`}
     </div>
     <${DialogButtons}><${Button} onClick=${onDismiss}>Annuleren<//><//>

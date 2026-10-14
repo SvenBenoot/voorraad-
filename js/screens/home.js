@@ -127,10 +127,17 @@ export function HomeScreen() {
 
     ${brandMenu && html`<${Dialog} onDismiss=${() => setBrandMenu(false)} cls="sheet">
       <div class="sheet-title">Toon merk</div>
-      <button type="button" class="sheet-btn" onClick=${() => { setBrand(null); setBrandMenu(false); }}>
-        <span class="sheet-grow">Alle merken</span>${!activeBrand && html`<${Icon} name="i_check" />`}</button>
-      ${brands.map((b) => html`<button type="button" key=${b} class="sheet-btn" onClick=${() => { setBrand(b); setBrandMenu(false); }}>
-        <span class="sheet-grow">${b} <span class="faint">· ${brandCounts.get(b)}</span></span>${activeBrand === b && html`<${Icon} name="i_check" />`}</button>`)}
+      <div class="pick-grid">
+        ${[null, ...brands].map((b) => {
+          const on = (activeBrand ?? null) === b;
+          return html`<button type="button" key=${b ?? '*'} class=${'pick-tile' + (on ? ' on' : '')} aria-pressed=${on}
+            onClick=${() => { setBrand(b); setBrandMenu(false); }}>
+            <span class="pick-name">${b ?? 'Alle merken'}</span>
+            <span class="pick-sub">${b ? plural(brandCounts.get(b), 'artikel', 'artikels') : plural(data.items.length, 'artikel', 'artikels')}</span>
+            ${on && html`<span class="pick-check"><${Icon} name="i_check" size=${16} /></span>`}
+          </button>`;
+        })}
+      </div>
       <${DialogButtons}><${Button} onClick=${() => setBrandMenu(false)}>Annuleren<//><//>
     <//>`}
     ${backup && html`<${BackupDialog} onDismiss=${() => setBackup(false)} />`}
