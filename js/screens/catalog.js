@@ -13,7 +13,7 @@ const chev = html`<svg class="chev" width="18" height="18" viewBox="0 0 24 24" a
  * Zoeken in de productlijst. [onPick] krijgt het product; [onOwned] (optioneel) het eigen artikel
  * als de barcode al bij een artikel hoort, dat krijgt dan het label In voorraad.
  */
-export function ProductSearch({ onPick, onOwned }) {
+function ProductSearch({ onPick, onOwned }) {
   const data = useData();
   const [all, setAll] = useState(null);
   const [failed, setFailed] = useState(false);

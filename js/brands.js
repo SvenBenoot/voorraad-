@@ -2,7 +2,7 @@
 // Keuzelijst met alle merken uit de productlijst, de merken van je eigen artikels en de merken die je zelf toevoegde.
 // Zelf toegevoegde merken zitten bij je gegevens, dus ook in de reservekopie.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
-import { store, prefs, collator } from './store.js';
+import { store, collator, fold } from './store.js';
 import { Dialog, DialogButtons, Button, SearchField, TextField, ConfirmDialog } from './ui.js';
 import { Icon } from './icons.js';
 import { loadCatalog } from './catalog.js';
@@ -29,16 +29,11 @@ export function BrandPicker({ value, onPick, onDismiss }) {
     loadCatalog().then((all) => { fromCatalog = all.map((p) => p.brand); setLoaded((n) => n + 1); }).catch(() => {});
   }, []);
   useEffect(() => { box.current?.querySelector('input')?.focus(); }, []);
-  // Versie 1.4 bewaarde eigen merken enkel op het toestel: eenmalig overzetten naar de gegevens.
-  useEffect(() => {
-    const old = prefs.value.brands;
-    if (old?.length) store.addBrands(old).then(() => prefs.set({ brands: undefined })).catch(() => {});
-  }, []);
 
   const brands = allBrands();
   const q = query.trim();
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const hits = words.length ? brands.filter((b) => words.every((w) => b.toLowerCase().includes(w))) : brands;
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  const hits = words.length ? brands.filter((b) => words.every((w) => fold(b).includes(w))) : brands;
   const exact = q && brands.some((b) => b.toLowerCase() === q.toLowerCase());
 
   // Merken die je al gebruikt staan vooraan, met hoeveel artikels.

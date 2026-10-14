@@ -4,7 +4,7 @@ import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { store, newId, categoryOf } from '../store.js';
 import {
   useData, TopBar, Footer, Button, IconButton, StepButton, Dialog, DialogButtons,
-  ConfirmDialog, CategoryDialog, ItemIcon, IconGrid, toast, usePrefs,
+  ConfirmDialog, ItemIcon, IconGrid, toast, usePrefs,
 } from '../ui.js';
 import { Icon } from '../icons.js';
 import { QrSvg } from '../qr.js';
@@ -28,11 +28,10 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [location, setLocation] = useState(original?.location ?? '');
   const [note, setNote] = useState(original?.note ?? '');
   const [code, setCode] = useState(() => original?.code ?? presetCode ?? store.newCode());
-  // Eigen icoon; null = dat van de categorie.
-  const [icon, setIcon] = useState(original?.icon ?? null);
+  // Het icoon hoort bij het artikel zelf en verandert niet mee met de categorie.
+  const [icon, setIcon] = useState(original?.icon ?? 'other');
   const [nameError, setNameError] = useState(null);
   const [codeError, setCodeError] = useState(null);
-  const [newCategory, setNewCategory] = useState(null); // null = dicht, anders de voorgestelde naam
   const [askDelete, setAskDelete] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -71,10 +70,10 @@ export function EditScreen({ id, code: presetCode, product }) {
     return () => { stop = true; };
   }, []);
   const dirty = !original
-    ? name.trim() !== '' || brand.trim() !== '' || icon !== null
+    ? name.trim() !== '' || brand.trim() !== '' || icon !== 'other'
     : name !== original.name || brand !== (original.brand ?? '') || category !== original.category || quantity !== original.quantity
       || minimum !== original.minimum || location !== original.location || note !== original.note
-      || code !== original.code || icon !== (original.icon ?? null);
+      || code !== original.code || icon !== original.icon;
 
   const save = async () => {
     const trimmed = name.trim();
@@ -111,8 +110,8 @@ export function EditScreen({ id, code: presetCode, product }) {
     <main class="content ed">
       <div class="ed-hero">
         <button type="button" class="ed-icon" aria-label="Icoon kiezen" onClick=${() => setIconMenu(true)}>
-          <${ItemIcon} category=${categoryOf(data, category)} icon=${icon} size=${96} />
-          <span class="ed-photo-badge"><${Icon} name="i_edit" size=${16} /></span>
+          <${ItemIcon} icon=${icon} size=${96} />
+          <span class="ed-icon-badge"><${Icon} name="i_edit" size=${16} /></span>
         </button>
         <div class="ed-name">
           <textarea rows="1" placeholder="Naam van het artikel" value=${name} enterkeyhint="done" class=${nameError ? 'err' : ''}
@@ -139,12 +138,14 @@ export function EditScreen({ id, code: presetCode, product }) {
       </div>
 
       <div class="group">
-        <div class="g-row">
-          <span class="g-label">Aantal</span>
+        <div class="g-row g-field g-field-mid">
+          <span class="g-field-icon"><${Icon} name="i_inventory" size=${20} /></span>
+          <span class="g-field-body"><span class="g-cap">Aantal</span><small class="g-field-sub">In voorraad</small></span>
           <${Stepper} value=${quantity} onChange=${setQuantity} label="Aantal" />
         </div>
-        <div class="g-row">
-          <span class="g-label">Minimum<small>${minimum === 0 ? 'Uit' : 'Bijvullen eronder'}</small></span>
+        <div class="g-row g-field g-field-mid">
+          <span class="g-field-icon"><${Icon} name="i_bell" size=${20} /></span>
+          <span class="g-field-body"><span class="g-cap">Minimum</span><small class="g-field-sub">${minimum === 0 ? 'Uit' : 'Bijvullen eronder'}</small></span>
           <${Stepper} value=${minimum} onChange=${setMinimum} label="Minimum" />
         </div>
       </div>
@@ -191,8 +192,7 @@ export function EditScreen({ id, code: presetCode, product }) {
 
     ${brandMenu && html`<${BrandPicker} value=${brand} onPick=${setBrand} onDismiss=${() => setBrandMenu(false)} />`}
 
-    ${catMenu && html`<${CategoryPicker} value=${categoryOf(data, category).id} onPick=${setCategory}
-      onNew=${(n) => setNewCategory(n)} onDismiss=${() => setCatMenu(false)} />`}
+    ${catMenu && html`<${CategoryPicker} value=${categoryOf(data, category).id} onPick=${setCategory} onDismiss=${() => setCatMenu(false)} />`}
 
     ${iconMenu && html`<${Dialog} onDismiss=${() => setIconMenu(false)} cls="sheet">
       <div class="sheet-title">Icoon</div>
@@ -213,10 +213,6 @@ export function EditScreen({ id, code: presetCode, product }) {
       }} />
       <div class="pad"><${Button} kind="secondary" cls="wide" onClick=${() => setScanning(false)}>Annuleren<//></div>
     </div>`}
-
-    ${newCategory != null && html`<${CategoryDialog} initialName=${newCategory} takenNames=${data.categories.map((c) => c.name)}
-      onSave=${async (n, icon) => { setNewCategory(null); setCategory((await store.addCategory(n, icon)).id); }}
-      onDismiss=${() => setNewCategory(null)} />`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
       text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."

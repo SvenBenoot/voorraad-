@@ -2,8 +2,8 @@
 // Dezelfde onderdelen als in de Android-app (PrimaryButton, VgCard, StatusBanner, ItemCard…),
 // alle kleuren komen uit de CSS-variabelen van het thema.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
-import { Icon, GradientIcon, CATEGORY_ICONS } from './icons.js';
-import { store, prefs, status, needsRestock, shortage, OTHER } from './store.js';
+import { Icon, GradientIcon, ICONS } from './icons.js';
+import { store, prefs, status, needsRestock, shortage, fold } from './store.js';
 
 // ---- winkel volgen
 
@@ -110,14 +110,11 @@ export function EmptyState({ title, text, icon = 'bin' }) {
   </div>`;
 }
 
-/**
- * Icoon van een artikel in de stijl van het app-logo: donker petrol vlak met het icoon in het merkverloop.
- * [icon] = eigen keuze van het artikel, anders dat van de categorie.
- */
-export function ItemIcon({ category, icon, size = 52 }) {
+/** Icoon van een artikel in de stijl van het app-logo: donker petrol vlak met het icoon in het merkverloop. */
+export function ItemIcon({ icon, size = 52 }) {
   const s = Math.round(size * 0.56);
   return html`<span class="item-icon" style=${`width:${size}px;height:${size}px;border-radius:${Math.round(size * 0.27)}px`}>
-    <${GradientIcon} name=${icon || category.icon} size=${s} />
+    <${GradientIcon} name=${icon} size=${s} />
   </span>`;
 }
 
@@ -129,7 +126,7 @@ export function BigNumber({ value, size = 30 }) {
 export function ItemCard({ item, category, onClick }) {
   const st = status(item);
   return html`<${Card} onClick=${onClick} cls="item-card">
-    <${ItemIcon} category=${category} icon=${item.icon} />
+    <${ItemIcon} icon=${item.icon} />
     <div class="item-body">
       <div class="card-title clamp2">${item.name}</div>
       <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip}>${category.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
@@ -229,38 +226,11 @@ export function ConfirmDialog({ kind = 'question', icon, title, text, confirmLab
   <//>`;
 }
 
-/** Categorie toevoegen of wijzigen: naam en icoon in één venster. */
-export function CategoryDialog({ existing, initialName = '', takenNames, onSave, onDismiss }) {
-  const [name, setName] = useState(existing?.name ?? initialName);
-  const [icon, setIcon] = useState(existing?.icon ?? 'box');
-  const [error, setError] = useState(null);
-  const save = () => {
-    const t = name.trim();
-    const err = !t ? 'Geef een naam in. Bv. Luidsprekers'
-      : takenNames.some((n) => n.toLowerCase() === t.toLowerCase() && n.toLowerCase() !== (existing?.name ?? '').toLowerCase())
-        ? 'Deze categorie bestaat al. Kies een andere naam.' : null;
-    setError(err);
-    if (!err) onSave(t, icon);
-  };
-  return html`<${Dialog} onDismiss=${onDismiss}>
-    <div class="dialog-body">
-      <div class="card-title">${existing ? 'Categorie wijzigen' : 'Nieuwe categorie'}</div>
-      <${TextField} label="Naam" value=${name} onInput=${(v) => { setName(v); setError(null); }} hint="Bv. Luidsprekers" error=${error} />
-      <div class="field-label">Icoon</div>
-      <${IconGrid} value=${icon} onPick=${setIcon} />
-    </div>
-    <${DialogButtons}>
-      <${Button} kind="secondary" onClick=${onDismiss}>Annuleren<//>
-      <${Button} kind="primary" onClick=${save}>Bewaren<//>
-    <//>
-  <//>`;
-}
-
-/** Raster met alle iconen, in de stijl van het app-logo, met een zoekveld. Gebruikt voor categorieën en artikels. */
+/** Raster met alle iconen, in de stijl van het app-logo, met een zoekveld. */
 export function IconGrid({ value, onPick }) {
   const [q, setQ] = useState('');
   const words = fold(q).split(/\s+/).filter(Boolean);
-  const list = words.length ? CATEGORY_ICONS.filter((o) => words.every((w) => fold(o.find).includes(w))) : CATEGORY_ICONS;
+  const list = words.length ? ICONS.filter((o) => words.every((w) => fold(o.find).includes(w))) : ICONS;
   return html`<div class="icon-picker">
     <${SearchField} value=${q} onInput=${setQ} hint="Icoon zoeken, bv. kabel" />
     <div class="icon-grid">
@@ -272,7 +242,6 @@ export function IconGrid({ value, onPick }) {
     </div>
   </div>`;
 }
-const fold = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 // ---- korte melding onderaan
 
