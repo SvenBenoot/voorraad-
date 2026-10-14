@@ -1,15 +1,14 @@
 // ---- Artikel toevoegen of wijzigen
-// Naam, merk, categorie, aantal, minimum, plaats, foto, QR-code en notitie. Pas bij Bewaren wordt iets weggeschreven.
+// Naam, merk, icoon, categorie, aantal, minimum, plaats, QR-code en notitie. Pas bij Bewaren wordt iets weggeschreven.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { store, newId, categoryOf } from '../store.js';
 import {
-  useData, usePhotoUrl, TopBar, Footer, Button, IconButton, StepButton, Dialog, DialogButtons,
-  ConfirmDialog, CategoryDialog, toast, usePrefs,
+  useData, TopBar, Footer, Button, IconButton, StepButton, Dialog, DialogButtons,
+  ConfirmDialog, CategoryDialog, ItemIcon, IconGrid, toast, usePrefs,
 } from '../ui.js';
 import { Icon } from '../icons.js';
 import { QrSvg } from '../qr.js';
 import { Scanner, beep } from '../scanner.js';
-import { PhotoEditor, loadPhoto, toJpeg } from '../photo.js';
 import { go, back, backAndReplace } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
 import { BrandPicker } from '../brands.js';
@@ -29,10 +28,8 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [location, setLocation] = useState(original?.location ?? '');
   const [note, setNote] = useState(original?.note ?? '');
   const [code, setCode] = useState(() => original?.code ?? presetCode ?? store.newCode());
-  // Foto: 'keep' = de bewaarde, of een nieuwe blob die pas bij Bewaren wordt weggeschreven, of null = geen.
-  const [photo, setPhoto] = useState(original?.photo ? 'keep' : null);
-  const [newPhotoUrl, setNewPhotoUrl] = useState(null);
-  const [editing, setEditing] = useState(null);
+  // Eigen icoon; null = dat van de categorie.
+  const [icon, setIcon] = useState(original?.icon ?? null);
   const [nameError, setNameError] = useState(null);
   const [codeError, setCodeError] = useState(null);
   const [newCategory, setNewCategory] = useState(false);
@@ -40,7 +37,7 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [askLeave, setAskLeave] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [photoMenu, setPhotoMenu] = useState(false);
+  const [iconMenu, setIconMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const [brandMenu, setBrandMenu] = useState(false);
   const [linking, setLinking] = useState(false);
@@ -67,50 +64,11 @@ export function EditScreen({ id, code: presetCode, product }) {
     else if (presetCode) findByBarcode(presetCode).then(fill);
     return () => { stop = true; };
   }, []);
-  const keptUrl = usePhotoUrl(original?.photo);
-  const camInput = useRef(null);
-  const libInput = useRef(null);
-
-  useEffect(() => () => { if (newPhotoUrl) URL.revokeObjectURL(newPhotoUrl); }, [newPhotoUrl]);
-
-  const shownPhoto = photo === 'keep' ? keptUrl : photo ? newPhotoUrl : null;
   const dirty = !original
-    ? name.trim() !== '' || brand.trim() !== '' || photo !== null
+    ? name.trim() !== '' || brand.trim() !== '' || icon !== null
     : name !== original.name || brand !== (original.brand ?? '') || category !== original.category || quantity !== original.quantity
       || minimum !== original.minimum || location !== original.location || note !== original.note
-      || code !== original.code || photo !== (original.photo ? 'keep' : null);
-
-  const onFile = async (e) => {
-    const file = e.currentTarget.files?.[0];
-    e.currentTarget.value = '';
-    if (!file) return;
-    setBusy(true);
-    try {
-      // Meteen de bewerker tonen: bijsnijden of draaien.
-      setEditing({ canvas: await loadPhoto(file), fresh: true });
-    } catch {
-      toast('Deze foto kon niet geopend worden');
-    }
-    setBusy(false);
-  };
-
-  const usePhoto = async (canvas) => {
-    const blob = await toJpeg(canvas);
-    if (newPhotoUrl) URL.revokeObjectURL(newPhotoUrl);
-    setNewPhotoUrl(URL.createObjectURL(blob));
-    setPhoto(blob);
-  };
-
-  const editCurrent = async () => {
-    if (!shownPhoto) return;
-    const img = new Image();
-    img.src = shownPhoto;
-    await img.decode();
-    const c = document.createElement('canvas');
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext('2d').drawImage(img, 0, 0);
-    setEditing({ canvas: c, fresh: false });
-  };
+      || code !== original.code || icon !== (original.icon ?? null);
 
   const save = async () => {
     const trimmed = name.trim();
@@ -123,16 +81,12 @@ export function EditScreen({ id, code: presetCode, product }) {
     if (nErr || cErr) return;
     setBusy(true);
     try {
-      let photoName = original?.photo ?? null;
-      if (photo instanceof Blob) photoName = await store.savePhoto(itemId, photo);
-      else if (photo === null) photoName = null;
       const now = Date.now();
       await store.save({
         ...(original ?? { id: itemId, createdAt: now }),
         code: code.trim(), name: trimmed, brand: brand.trim(), category, quantity, minimum,
-        location: location.trim(), note: note.trim(), photo: photoName,
+        location: location.trim(), note: note.trim(), icon,
       });
-      if (original?.photo && original.photo !== photoName) await store.deletePhoto(original.photo);
     } catch {
       // De melding zelf komt van store.update; hier enkel de knop terug vrijgeven.
       setBusy(false);
@@ -146,17 +100,13 @@ export function EditScreen({ id, code: presetCode, product }) {
 
   const leave = () => (dirty ? setAskLeave(true) : back());
 
-  // Fotomenu: de keuzes onder één tik op de foto, i.p.v. vier knoppen onder elkaar.
-  const pick = (input) => { setPhotoMenu(false); input.current.click(); };
-
   return html`<div class="screen">
     <${TopBar} title=${original ? 'Artikel wijzigen' : 'Nieuw artikel'} onBack=${leave} />
     <main class="content ed">
       <div class="ed-hero">
-        <button type="button" class="ed-photo" aria-label=${shownPhoto ? 'Foto wijzigen' : 'Foto toevoegen'} onClick=${() => setPhotoMenu(true)}>
-          ${shownPhoto ? html`<img src=${shownPhoto} alt="" />`
-            : html`<span class="ed-photo-empty"><${Icon} name=${busy ? 'i_refresh' : 'i_camera'} size=${28} /><span>${busy ? 'Bezig…' : 'Foto'}</span></span>`}
-          ${shownPhoto && html`<span class="ed-photo-badge"><${Icon} name="i_edit" size=${16} /></span>`}
+        <button type="button" class="ed-icon" aria-label="Icoon kiezen" onClick=${() => setIconMenu(true)}>
+          <${ItemIcon} category=${categoryOf(data, category)} icon=${icon} size=${96} />
+          <span class="ed-photo-badge"><${Icon} name="i_edit" size=${16} /></span>
         </button>
         <div class="ed-name">
           <textarea rows="1" placeholder="Naam van het artikel" value=${name} enterkeyhint="done" class=${nameError ? 'err' : ''}
@@ -214,8 +164,6 @@ export function EditScreen({ id, code: presetCode, product }) {
         : !original && html`<p class="small faint ed-hint">Zit er al een QR-label op het artikel? Scan het met de knop naast de code.</p>`}
 
       ${original && html`<${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskDelete(true)}>Artikel verwijderen…<//>`}
-      <input ref=${camInput} type="file" accept="image/*" capture="environment" hidden onChange=${onFile} />
-      <input ref=${libInput} type="file" accept="image/*" hidden onChange=${onFile} />
     </main>
     <${Footer}>
       <${Button} kind="secondary" onClick=${leave}>Annuleren<//>
@@ -245,22 +193,18 @@ export function EditScreen({ id, code: presetCode, product }) {
       <${DialogButtons}><${Button} onClick=${() => setCatMenu(false)}>Annuleren<//><//>
     <//>`}
 
-    ${photoMenu && html`<${Dialog} onDismiss=${() => setPhotoMenu(false)} cls="sheet">
-      <div class="sheet-title">Foto</div>
-      <button type="button" class="sheet-btn" onClick=${() => pick(camInput)}><${Icon} name="i_camera" />Foto maken</button>
-      <button type="button" class="sheet-btn" onClick=${() => pick(libInput)}><${Icon} name="i_gallery" />Uit fotobibliotheek</button>
-      ${shownPhoto && html`<button type="button" class="sheet-btn" onClick=${() => { setPhotoMenu(false); editCurrent(); }}><${Icon} name="i_crop" />Bijsnijden of draaien</button>`}
-      ${shownPhoto && html`<button type="button" class="sheet-btn danger-text" onClick=${() => { setPhotoMenu(false); setPhoto(null); }}><${Icon} name="i_delete" />Foto weghalen</button>`}
-      <${DialogButtons}><${Button} onClick=${() => setPhotoMenu(false)}>Annuleren<//><//>
+    ${iconMenu && html`<${Dialog} onDismiss=${() => setIconMenu(false)} cls="sheet">
+      <div class="sheet-title">Icoon</div>
+      <div class="dialog-body icon-pick">
+        <button type="button" class=${'sheet-btn icon-follow' + (icon ? '' : ' on')} onClick=${() => { setIcon(null); setIconMenu(false); }}>
+          <${ItemIcon} category=${categoryOf(data, category)} size=${36} />
+          <span class="sheet-grow">Zoals de categorie<small class="faint"> · ${categoryOf(data, category).name}</small></span>
+          ${!icon && html`<${Icon} name="i_check" />`}
+        </button>
+        <${IconGrid} value=${icon} onPick=${(k) => { setIcon(k); setIconMenu(false); }} />
+      </div>
+      <${DialogButtons}><${Button} onClick=${() => setIconMenu(false)}>Annuleren<//><//>
     <//>`}
-
-    ${editing && html`<${PhotoEditor} original=${editing.canvas} onDone=${(res) => {
-      const { canvas, fresh } = editing;
-      setEditing(null);
-      // Overslaan bij een nieuwe foto = de foto gebruiken zoals ze is; bij een bestaande = niets wijzigen.
-      if (res) usePhoto(res);
-      else if (fresh) usePhoto(canvas);
-    }} />`}
 
     ${scanning && html`<div class="fullscreen scan-overlay">
       <${TopBar} title="Bestaande code scannen" onBack=${() => setScanning(false)} />
@@ -279,7 +223,7 @@ export function EditScreen({ id, code: presetCode, product }) {
       onDismiss=${() => setNewCategory(false)} />`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
-      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); go('/', { replace: true }); }}
       onDismiss=${() => setAskDelete(false)} />`}
 

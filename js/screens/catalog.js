@@ -55,7 +55,7 @@ export function CatalogScreen() {
     <main class="content">
       <button type="button" class="card clickable cat-own" onClick=${() => go('/maken')}>
         <span class="cat-own-icon"><${Icon} name="i_add" size=${26} /></span>
-        <span class="g-label">Zelf maken<small>Naam, merk, aantal en foto zelf ingeven</small></span>
+        <span class="g-label">Zelf maken<small>Naam, merk, icoon en aantal zelf ingeven</small></span>
         ${chev}
       </button>
 

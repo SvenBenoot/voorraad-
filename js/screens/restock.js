@@ -48,7 +48,7 @@ export function RestockScreen() {
     const info = [`Nu ${it.quantity}`, it.minimum > 0 && `min. ${it.minimum}`, it.location].filter(Boolean).join(' · ');
     list.push(html`<${Card} key=${it.id} selected=${line.done} pad=${12} cls="pick" onClick=${() => store.togglePick(it.id)}>
       <span class=${'check' + (line.done ? ' on' : '')}>${line.done && html`<${Icon} name="i_check" size=${18} />`}</span>
-      <span onClick=${(e) => { e.stopPropagation(); go('/artikel/' + it.id); }}><${ItemIcon} category=${cat} photo=${it.photo} size=${40} /></span>
+      <span onClick=${(e) => { e.stopPropagation(); go('/artikel/' + it.id); }}><${ItemIcon} category=${cat} icon=${it.icon} size=${40} /></span>
       <div class="pick-body">
         <div class=${'card-title clamp2' + (line.done ? ' done' : '')}>${it.name}</div>
         <div class=${'small ' + (needsRestock(it) ? 'tone-text-orange' : 'faint')}>${info}</div>
@@ -116,7 +116,7 @@ function PickerDialog({ data, onPick, onDismiss }) {
       <div class="picker-list">
         ${options.length === 0 && html`<p class="sub">Niets gevonden.</p>`}
         ${options.map((it) => html`<button type="button" class="picker-row" key=${it.id} onClick=${() => onPick(it.id)}>
-          <${ItemIcon} category=${categoryOf(data, it)} photo=${it.photo} size=${36} />
+          <${ItemIcon} category=${categoryOf(data, it)} icon=${it.icon} size=${36} />
           <span class="picker-text"><b class="ellipsis">${it.name}</b><small class="faint">Nu ${it.quantity} · ${categoryOf(data, it).name}</small></span>
           <span class="accent"><${Icon} name="i_add" /></span>
         </button>`)}

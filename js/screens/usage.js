@@ -60,7 +60,7 @@ export function UsageScreen() {
   // Een intussen verwijderd artikel blijft staan, met de naam uit het logboek.
   const gone = (id) => {
     const name = data.movements.find((m) => m.itemId === id && m.name)?.name;
-    return name ? { id, name: name + ' (verwijderd)', category: OTHER, quantity: 0, location: '', photo: null, deleted: true } : null;
+    return name ? { id, name: name + ' (verwijderd)', category: OTHER, quantity: 0, location: '', icon: null, deleted: true } : null;
   };
   const rows = Object.entries(used)
     .map(([id, n]) => [data.items.find((i) => i.id === id) ?? gone(id), n])
@@ -91,7 +91,7 @@ export function UsageScreen() {
     const cat = categoryOf(data, it);
     if (i === 0 || categoryOf(data, rows[i - 1][0]).id !== cat.id) list.push(html`<${SectionHeader} key=${'kop-' + cat.id}>${cat.name}<//>`);
     list.push(html`<${Card} key=${it.id} cls="usage-row" onClick=${it.deleted ? null : () => go('/artikel/' + it.id)}>
-      <${ItemIcon} category=${cat} photo=${it.photo} size=${40} />
+      <${ItemIcon} category=${cat} icon=${it.icon} size=${40} />
       <div class="pick-body">
         <div class="card-title clamp2">${it.name}</div>
         <div class="small faint">${it.deleted ? 'Niet meer in je voorraad' : `Nu nog ${it.quantity}${it.location ? ' · ' + it.location : ''}`}</div>

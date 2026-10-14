@@ -166,7 +166,7 @@ function QuantityDialog({ id, onSave, onOpen, onDismiss }) {
   return html`<${Dialog} onDismiss=${onDismiss}>
     <div class="dialog-body">
       <div class="qd-head">
-        <${ItemIcon} category=${categoryOf(data, item)} photo=${item.photo} size=${56} />
+        <${ItemIcon} category=${categoryOf(data, item)} icon=${item.icon} size=${56} />
         <div>
           <div class="window-title clamp2">${item.name}</div>
           <div class="sub">Nu ${item.quantity} stuks${item.location ? ' · ' + item.location : ''}</div>
