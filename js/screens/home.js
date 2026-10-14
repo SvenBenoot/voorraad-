@@ -96,7 +96,7 @@ export function HomeScreen() {
 
       ${restockCount > 0 && activeFilter !== 'restock' && html`<${StatusBanner} tone="orange" icon="i_warning"
         title=${restockCount === 1 ? '1 artikel bijvullen' : `${restockCount} artikels bijvullen`}
-        text="Onder de minimumvoorraad. Tik om je aanvullijst voor het magazijn te openen."
+        text="Op of onder de minimumvoorraad. Tik om je aanvullijst voor het magazijn te openen."
         onClick=${() => go('/aanvullen')} />`}
 
       ${backupDue(p, data) && html`<${StatusBanner} tone="blue" icon="i_backup" title="Tijd voor een reservekopie"

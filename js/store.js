@@ -28,8 +28,10 @@ export const collator = new Intl.Collator('nl-BE', { sensitivity: 'base', numeri
 
 // ---- artikel-hulpjes
 
-export const needsRestock = (it) => it.minimum > 0 && it.quantity < it.minimum;
-export const shortage = (it) => Math.max(0, it.minimum - it.quantity);
+// Zonder minimum telt "op" ook als bijvullen: dan neem je er minstens 1 mee.
+const target = (it) => Math.max(it.minimum, 1);
+export const needsRestock = (it) => it.quantity < target(it);
+export const shortage = (it) => Math.max(0, target(it) - it.quantity);
 export function status(it) {
   if (it.quantity <= 0) return 'EMPTY';
   if (needsRestock(it)) return 'LOW';
