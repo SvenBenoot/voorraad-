@@ -97,6 +97,8 @@ export function normalize(raw) {
     categories: raw?.categories?.length ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice(),
     // Zelf toegevoegde merken (de merken uit de productlijst en van je artikels komen er vanzelf bij).
     brands: (raw?.brands ?? []).map((b) => String(b).trim()).filter(Boolean),
+    // Merken uit de productlijst die je weghaalde; die verschijnen niet meer in de merkenlijst.
+    hiddenBrands: (raw?.hiddenBrands ?? []).map((b) => String(b).trim()).filter(Boolean),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
   };
   // De categorieën die er in 1.7 bijkwamen één keer toevoegen (vóór "Andere"), tenzij er al een met die naam is.
@@ -253,8 +255,22 @@ export const store = {
     return this.update((d) => {
       const have = new Set(d.brands.map((b) => b.toLowerCase()));
       const add = names.map((b) => b.trim()).filter((b) => b && !have.has(b.toLowerCase()));
-      if (!add.length) return null;
+      const back = new Set(names.map((b) => b.trim().toLowerCase()));
+      const hidden = d.hiddenBrands.filter((b) => !back.has(b.toLowerCase()));
+      if (!add.length && hidden.length === d.hiddenBrands.length) return null;
       d.brands = [...d.brands, ...add];
+      d.hiddenBrands = hidden;
+      return d;
+    });
+  },
+
+  /** Merk weghalen uit de lijst (ook een uit de productlijst), en van de artikels die het hadden. */
+  removeBrand(name) {
+    const k = name.trim().toLowerCase();
+    return this.update((d) => {
+      d.brands = d.brands.filter((b) => b.toLowerCase() !== k);
+      if (!d.hiddenBrands.some((b) => b.toLowerCase() === k)) d.hiddenBrands = [...d.hiddenBrands, name.trim()];
+      d.items = d.items.map((i) => ((i.brand ?? '').trim().toLowerCase() === k ? { ...i, brand: '', updatedAt: Date.now() } : i));
       return d;
     });
   },
@@ -272,32 +288,6 @@ export const store = {
     return cat;
   },
 
-  updateCategory(cat) {
-    return this.update((d) => {
-      d.categories = d.categories.map((c) => (c.id === cat.id ? { ...cat, name: cat.name.trim() } : c));
-      return d;
-    });
-  },
-
-  /** Verwijdert een categorie; de artikels erin komen bij "Andere". */
-  deleteCategory(id) {
-    if (id === OTHER) return;
-    return this.update((d) => {
-      d.categories = d.categories.filter((c) => c.id !== id);
-      d.items = d.items.map((i) => (i.category === id ? { ...i, category: OTHER } : i));
-      return d;
-    });
-  },
-
-  moveCategory(id, up) {
-    return this.update((d) => {
-      const i = d.categories.findIndex((c) => c.id === id);
-      const j = up ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= d.categories.length) return null;
-      [d.categories[i], d.categories[j]] = [d.categories[j], d.categories[i]];
-      return d;
-    });
-  },
 
   // ---- magazijnlijst
 
