@@ -1,5 +1,5 @@
 // ---- Bestanden: reservekopie, Excel en QR-labels
-// De reservekopie is dezelfde zip als in de Android-app (voorraad.json + map fotos/),
+// De reservekopie is een zip met voorraad.json (zelfde vorm als in de vroegere Android-app),
 // zodat je van Android naar iPhone kan overstappen en terug.
 import { zipSync, unzipSync, strToU8, strFromU8 } from '../lib/fflate.js';
 import { store, collator, categoryOf, shortage } from './store.js';
@@ -47,10 +47,6 @@ export async function shareText(text) {
 
 export async function makeBackup() {
   const files = { 'voorraad.json': strToU8(JSON.stringify(store.data, null, 2)) };
-  const photos = await store.allPhotos();
-  for (const [name, blob] of Object.entries(photos)) {
-    files['fotos/' + name] = [new Uint8Array(await blob.arrayBuffer()), { level: 0 }]; // jpg comprimeert niet verder
-  }
   const zipped = zipSync(files, { level: 6 });
   return new File([zipped], `voorraad-${stamp()}.zip`, { type: 'application/zip' });
 }
@@ -60,15 +56,8 @@ export async function readBackup(file) {
   const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
   const json = entries['voorraad.json'];
   if (!json) throw new Error('Geen voorraad.json in dit bestand');
-  const raw = JSON.parse(strFromU8(json));
-  const photos = {};
-  for (const [path, bytes] of Object.entries(entries)) {
-    if (!path.startsWith('fotos/')) continue;
-    // Enkel de bestandsnaam gebruiken, zoals in de Android-app.
-    const name = path.split('/').pop();
-    if (name) photos[name] = new Blob([bytes], { type: 'image/jpeg' });
-  }
-  return { raw, photos };
+  // Foto's in oudere kopieën (map fotos/) worden genegeerd.
+  return { raw: JSON.parse(strFromU8(json)) };
 }
 
 // ---- Excel

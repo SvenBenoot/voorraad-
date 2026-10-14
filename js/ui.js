@@ -2,7 +2,7 @@
 // Dezelfde onderdelen als in de Android-app (PrimaryButton, VgCard, StatusBanner, ItemCard…),
 // alle kleuren komen uit de CSS-variabelen van het thema.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
-import { Icon, CATEGORY_ICONS } from './icons.js';
+import { Icon, GradientIcon, CATEGORY_ICONS } from './icons.js';
 import { store, prefs, status, needsRestock, shortage, OTHER } from './store.js';
 
 // ---- winkel volgen
@@ -17,17 +17,6 @@ export function usePrefs() {
   const [p, setP] = useState(prefs.value);
   useEffect(() => prefs.subscribe(setP), []);
   return p;
-}
-
-export function usePhotoUrl(name) {
-  const [url, setUrl] = useState(() => store.cachedPhotoUrl(name));
-  useEffect(() => {
-    let alive = true;
-    setUrl(store.cachedPhotoUrl(name));
-    store.photoUrl(name).then((u) => { if (alive) setUrl(u); });
-    return () => { alive = false; };
-  }, [name]);
-  return url;
 }
 
 // ---- knoppen
@@ -121,11 +110,14 @@ export function EmptyState({ title, text, icon = 'bin' }) {
   </div>`;
 }
 
-export function ItemIcon({ category, photo, size = 52 }) {
-  const url = usePhotoUrl(photo);
-  if (url) return html`<img class="item-icon photo" src=${url} alt="" style=${`width:${size}px;height:${size}px`} />`;
-  return html`<span class=${'item-icon ' + (category.id === OTHER ? 'other' : '')} style=${`width:${size}px;height:${size}px`}>
-    <${Icon} name=${category.icon} size=${Math.round(size * 0.5)} />
+/**
+ * Icoon van een artikel in de stijl van het app-logo: donker petrol vlak met het icoon in het merkverloop.
+ * [icon] = eigen keuze van het artikel, anders dat van de categorie.
+ */
+export function ItemIcon({ category, icon, size = 52 }) {
+  const s = Math.round(size * 0.56);
+  return html`<span class="item-icon" style=${`width:${size}px;height:${size}px;border-radius:${Math.round(size * 0.27)}px`}>
+    <${GradientIcon} name=${icon || category.icon} size=${s} />
   </span>`;
 }
 
@@ -137,7 +129,7 @@ export function BigNumber({ value, size = 30 }) {
 export function ItemCard({ item, category, onClick }) {
   const st = status(item);
   return html`<${Card} onClick=${onClick} cls="item-card">
-    <${ItemIcon} category=${category} photo=${item.photo} />
+    <${ItemIcon} category=${category} icon=${item.icon} />
     <div class="item-body">
       <div class="card-title clamp2">${item.name}</div>
       <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip}>${category.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
@@ -255,17 +247,23 @@ export function CategoryDialog({ existing, takenNames, onSave, onDismiss }) {
       <div class="card-title">${existing ? 'Categorie wijzigen' : 'Nieuwe categorie'}</div>
       <${TextField} label="Naam" value=${name} onInput=${(v) => { setName(v); setError(null); }} hint="Bv. Luidsprekers" error=${error} />
       <div class="field-label">Icoon</div>
-      <div class="icon-grid">
-        ${CATEGORY_ICONS.map((o) => html`<button type="button" class=${'icon-opt' + (o.key === icon ? ' on' : '')} onClick=${() => setIcon(o.key)}>
-          <span class="icon-box"><${Icon} name=${o.key} size=${22} /></span><span class="icon-name">${o.label}</span>
-        </button>`)}
-      </div>
+      <${IconGrid} value=${icon} onPick=${setIcon} />
     </div>
     <${DialogButtons}>
       <${Button} kind="secondary" onClick=${onDismiss}>Annuleren<//>
       <${Button} kind="primary" onClick=${save}>Bewaren<//>
     <//>
   <//>`;
+}
+
+/** Raster met alle iconen, in de stijl van het app-logo. Gebruikt voor categorieën en artikels. */
+export function IconGrid({ value, onPick }) {
+  return html`<div class="icon-grid">
+    ${CATEGORY_ICONS.map((o) => html`<button type="button" key=${o.key} class=${'icon-opt' + (o.key === value ? ' on' : '')}
+      aria-pressed=${o.key === value} onClick=${() => onPick(o.key)}>
+      <span class="icon-box"><${GradientIcon} name=${o.key} size=${24} /></span><span class="icon-name">${o.label}</span>
+    </button>`)}
+  </div>`;
 }
 
 // ---- korte melding onderaan

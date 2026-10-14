@@ -135,11 +135,11 @@ export function HomeScreen() {
     <//>`}
     ${backup && html`<${BackupDialog} onDismiss=${() => setBackup(false)} />`}
     ${askEdit && html`<${ConfirmDialog} icon="i_edit" title=${askEdit.name + ' wijzigen?'}
-      text="Je opent het formulier om naam, categorie, aantal, plaats of foto aan te passen."
+      text="Je opent het formulier om naam, merk, icoon, categorie, aantal of plaats aan te passen."
       confirmLabel="Wijzigen" onConfirm=${() => { const id = askEdit.id; setAskEdit(null); go('/wijzigen/' + id); }}
       onDismiss=${() => setAskEdit(null)} />`}
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${askDelete.name + ' verwijderen?'}
-      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { store.delete(askDelete.id); setAskDelete(null); }}
       onDismiss=${() => setAskDelete(null)} />`}
   </div>`;

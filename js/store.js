@@ -1,6 +1,6 @@
 // ---- Gegevens
 // Zelfde opbouw als de Android-app (voorraad.json), zodat een reservekopie van de ene in de andere past.
-// Alles staat op het toestel zelf in IndexedDB: één record met de gegevens en een tabel met foto's.
+// Alles staat op het toestel zelf in IndexedDB: één record met de gegevens.
 
 export const OTHER = 'OTHER';
 
@@ -63,7 +63,7 @@ export function normalize(raw) {
     items: (raw?.items ?? []).map((it) => ({
       id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''), brand: String(it.brand ?? ''),
       category: it.category ?? 'CABLE', quantity: Math.max(0, it.quantity | 0), minimum: Math.max(0, it.minimum | 0),
-      location: it.location ?? '', note: it.note ?? '', photo: it.photo ?? null,
+      location: it.location ?? '', note: it.note ?? '', icon: it.icon ?? null,
       createdAt: it.createdAt ?? now, updatedAt: it.updatedAt ?? now,
     })),
     movements: (raw?.movements ?? []).map((m) => ({
@@ -89,7 +89,7 @@ function db() {
     const req = indexedDB.open('voorraad', 1);
     req.onupgradeneeded = () => {
       req.result.createObjectStore('kv');
-      req.result.createObjectStore('photos');
+      req.result.createObjectStore('photos'); // niet meer gebruikt (vroeger foto's), blijft voor bestaande installaties
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -115,7 +115,6 @@ async function tx(store, mode, fn) {
 
 let data = normalize(null);
 const listeners = new Set();
-const photoUrls = new Map();
 
 export const store = {
   get data() { return data; },
@@ -125,6 +124,8 @@ export const store = {
   async load() {
     const saved = await tx('kv', 'readonly', (s) => s.get('data'));
     data = normalize(saved);
+    // Foto's zijn er sinds 1.6 niet meer: de oude meteen opruimen, dat spaart plaats op de iPhone.
+    tx('photos', 'readwrite', (s) => { s.clear(); }).catch(() => {});
     // Vraag de browser om de gegevens niet zomaar op te ruimen bij plaatsgebrek.
     try { await navigator.storage?.persist?.(); } catch { /* niet erg */ }
     emit();
@@ -199,7 +200,6 @@ export const store = {
   adjustMany(deltas) { return this.update((d) => applyDeltas(d, deltas)); },
 
   async delete(id) {
-    const photo = this.item(id)?.photo;
     await this.update((d) => {
       const name = d.items.find((i) => i.id === id)?.name ?? '';
       d.items = d.items.filter((i) => i.id !== id);
@@ -208,7 +208,6 @@ export const store = {
       d.pickList = d.pickList.filter((p) => p.itemId !== id);
       return d;
     });
-    if (photo) await this.deletePhoto(photo);
   },
 
   // ---- eigen productlijst (ingelezen uit een CRM-export; los van de gegevens, niet in de reservekopie)
@@ -325,53 +324,9 @@ export const store = {
     });
   },
 
-  // ---- foto's
-
-  async savePhoto(itemId, blob) {
-    const name = `${itemId}-${Date.now()}.jpg`;
-    await tx('photos', 'readwrite', (s) => s.put(blob, name));
-    return name;
-  },
-
-  async deletePhoto(name) {
-    if (!name) return;
-    const url = photoUrls.get(name);
-    if (url) { URL.revokeObjectURL(url); photoUrls.delete(name); }
-    await tx('photos', 'readwrite', (s) => s.delete(name));
-  },
-
-  photoBlob(name) { return name ? tx('photos', 'readonly', (s) => s.get(name)) : Promise.resolve(null); },
-
-  /** Object-URL voor een foto, één keer gemaakt en daarna hergebruikt. */
-  async photoUrl(name) {
-    if (!name) return null;
-    if (photoUrls.has(name)) return photoUrls.get(name);
-    const blob = await this.photoBlob(name);
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    photoUrls.set(name, url);
-    return url;
-  },
-  cachedPhotoUrl(name) { return photoUrls.get(name) ?? null; },
-
-  async allPhotos() {
-    const out = {};
-    for (const name of this.data.items.map((i) => i.photo).filter(Boolean)) {
-      const b = await this.photoBlob(name);
-      if (b) out[name] = b;
-    }
-    return out;
-  },
-
-  /** Vervangt alles door een reservekopie (gegevens + foto's). */
-  async replaceAll(raw, photos) {
+  /** Vervangt alles door een reservekopie. */
+  async replaceAll(raw) {
     const next = normalize(raw);
-    for (const url of photoUrls.values()) URL.revokeObjectURL(url);
-    photoUrls.clear();
-    await tx('photos', 'readwrite', (s) => {
-      s.clear();
-      for (const [name, blob] of Object.entries(photos)) s.put(blob, name);
-    });
     data = next;
     emit();
     await tx('kv', 'readwrite', (s) => s.put(data, 'data'));

@@ -5,7 +5,7 @@ import { Icon } from '../icons.js';
 import { store, prefs, collator, categoryOf, OTHER } from '../store.js';
 import {
   useData, usePrefs, TopBar, Card, SectionHeader, Button, IconButton, FilterChip, Switch, StatusBanner, Dialog,
-  DialogButtons, ConfirmDialog, CategoryDialog, fmtDate, plural, toast,
+  DialogButtons, ConfirmDialog, CategoryDialog, ItemIcon, fmtDate, plural, toast,
 } from '../ui.js';
 import { makeBackup, readBackup, makeExcel, labelsPdf, shareOrDownload } from '../files.js';
 import { back } from '../router.js';
@@ -140,7 +140,7 @@ export function SettingsScreen() {
         ${data.categories.map((c, i) => {
           const n = data.items.filter((it) => categoryOf(data, it).id === c.id).length;
           return html`<div class="cat-row" key=${c.id}>
-            <span class="item-icon small"><${Icon} name=${c.icon} size=${20} /></span>
+            <${ItemIcon} category=${c} size=${36} />
             <div class="cat-text"><b>${c.name}</b><small class="faint">${plural(n, 'artikel', 'artikels')}</small></div>
             <${IconButton} icon="i_up" label="Hoger zetten" cls=${i === 0 ? 'invisible' : 'faint'} onClick=${() => store.moveCategory(c.id, true)} />
             <${IconButton} icon="i_edit" label="Wijzigen" cls="accent" onClick=${() => setEditCat(c)} />
@@ -236,7 +236,7 @@ export function SettingsScreen() {
         const r = restore;
         setRestore(null);
         try {
-          await store.replaceAll(r.raw, r.photos);
+          await store.replaceAll(r.raw);
           setNotice({ ok: true, title: 'Reservekopie teruggezet', text: `${plural(store.data.items.length, 'artikel is', 'artikels zijn')} hersteld.` });
         } catch {
           setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'De kopie kon niet ingelezen worden. Probeer opnieuw.' });

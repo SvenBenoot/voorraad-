@@ -3,7 +3,7 @@
 import { html, useEffect, useState } from '../../lib/preact-htm.js';
 import { store, categoryOf, status, needsRestock, shortage } from '../store.js';
 import {
-  useData, usePhotoUrl, TopBar, IconButton, Card, Chip, StatusBanner, StatusPill, StepButton, Button, SectionHeader,
+  useData, TopBar, IconButton, Card, Chip, StatusBanner, StatusPill, StepButton, Button, SectionHeader,
   ConfirmDialog, NumberField, ItemIcon, BigNumber, TONE, toast,
 } from '../ui.js';
 import { QrSvg } from '../qr.js';
@@ -13,7 +13,6 @@ import { go, back } from '../router.js';
 export function ItemScreen({ id }) {
   const data = useData();
   const item = data.items.find((i) => i.id === id);
-  const photo = usePhotoUrl(item?.photo);
   const [askDelete, setAskDelete] = useState(false);
   const [askQuantity, setAskQuantity] = useState(null);
   const [ready, setReady] = useState(null); // klaargemaakt bestand om te delen
@@ -38,9 +37,8 @@ export function ItemScreen({ id }) {
       <${IconButton} icon="i_edit" label="Wijzigen" onClick=${() => go('/wijzigen/' + item.id)} />
     <//>
     <main class="content">
-      ${photo && html`<img class="hero" src=${photo} alt=${'Foto van ' + item.name} />`}
       <div class="item-head">
-        ${!photo && html`<${ItemIcon} category=${cat} size=${64} />`}
+        <${ItemIcon} category=${cat} icon=${item.icon} size=${64} />
         <div>
           <div class="window-title">${item.name}</div>
           <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip} icon=${cat.icon}>${cat.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
@@ -97,7 +95,7 @@ export function ItemScreen({ id }) {
     </main>
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${item.name + ' verwijderen?'}
-      text="Het artikel en zijn foto worden gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { setAskDelete(false); store.delete(item.id); }}
       onDismiss=${() => setAskDelete(false)} />`}
 

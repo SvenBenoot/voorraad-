@@ -40,6 +40,17 @@ export function Icon({ name, size = 24, cls = '', label }) {
     dangerouslySetInnerHTML=${{ __html: inner }}></svg>`;
 }
 
+const masks = {};
+/**
+ * Icoon in het merkverloop (blauw → groen), zoals de doos in het app-logo.
+ * Het icoon dient als masker over een vlak met het verloop; zo werkt het voor gevulde én lijniconen.
+ */
+export function GradientIcon({ name, size = 24 }) {
+  const key = ALL[name] ? name : 'other';
+  masks[key] ??= `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#000" stroke="#000">${ALL[key].replaceAll('currentColor', '#000')}</svg>`)}")`;
+  return html`<span class="grad-icon" aria-hidden="true" style=${`width:${size}px;height:${size}px;-webkit-mask-image:${masks[key]};mask-image:${masks[key]}`}></span>`;
+}
+
 /** Iconen die je bij een categorie kan kiezen. De sleutel wordt bewaard, zoals in de Android-app. */
 export const CATEGORY_ICONS = [
   ['cable', 'Kabel'], ['xlr', 'XLR'], ['dmx', 'DMX'], ['jack', 'Jack'], ['cinch', 'Cinch'], ['bnc', 'BNC'],
