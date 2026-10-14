@@ -67,6 +67,8 @@ export function normalize(raw) {
       ...(m.name ? { name: String(m.name) } : {}),
     })),
     categories: raw?.categories?.length ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice(),
+    // Zelf toegevoegde merken (de merken uit de productlijst en van je artikels komen er vanzelf bij).
+    brands: (raw?.brands ?? []).map((b) => String(b).trim()).filter(Boolean),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
   };
   // "Andere" kan niet weg: daar komen artikels van een verwijderde categorie terecht.
@@ -202,6 +204,18 @@ export const store = {
       return d;
     });
     if (photo) await this.deletePhoto(photo);
+  },
+
+  // ---- merken
+
+  addBrands(names) {
+    return this.update((d) => {
+      const have = new Set(d.brands.map((b) => b.toLowerCase()));
+      const add = names.map((b) => b.trim()).filter((b) => b && !have.has(b.toLowerCase()));
+      if (!add.length) return null;
+      d.brands = [...d.brands, ...add];
+      return d;
+    });
   },
 
   // ---- categorieën

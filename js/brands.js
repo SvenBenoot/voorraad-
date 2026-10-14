@@ -1,6 +1,6 @@
 // ---- Merken
 // Keuzelijst met alle merken uit de productlijst, de merken van je eigen artikels en de merken die je zelf toevoegde.
-// Zelf toegevoegde merken staan in de instellingen op dit toestel; zodra een artikel ze gebruikt, zitten ze ook in de reservekopie.
+// Zelf toegevoegde merken zitten bij je gegevens, dus ook in de reservekopie.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
 import { store, prefs, collator } from './store.js';
 import { Dialog, DialogButtons, Button, SearchField } from './ui.js';
@@ -11,7 +11,7 @@ let fromCatalog = [];
 
 function allBrands() {
   const seen = new Map();
-  for (const b of [...fromCatalog, ...store.data.items.map((i) => i.brand), ...(prefs.value.brands ?? [])]) {
+  for (const b of [...fromCatalog, ...store.data.items.map((i) => i.brand), ...store.data.brands]) {
     const t = (b ?? '').trim();
     if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
   }
@@ -26,6 +26,11 @@ export function BrandPicker({ value, onPick, onDismiss }) {
     loadCatalog().then((all) => { fromCatalog = all.map((p) => p.brand); setLoaded((n) => n + 1); }).catch(() => {});
   }, []);
   useEffect(() => { box.current?.querySelector('input')?.focus(); }, []);
+  // Versie 1.4 bewaarde eigen merken enkel op het toestel: eenmalig overzetten naar de gegevens.
+  useEffect(() => {
+    const old = prefs.value.brands;
+    if (old?.length) store.addBrands(old).then(() => prefs.set({ brands: undefined })).catch(() => {});
+  }, []);
 
   const brands = allBrands();
   const q = query.trim();
@@ -34,11 +39,7 @@ export function BrandPicker({ value, onPick, onDismiss }) {
   const exact = q && brands.some((b) => b.toLowerCase() === q.toLowerCase());
 
   const pick = (b) => { onPick(b); onDismiss(); };
-  const addNew = () => {
-    const mine = prefs.value.brands ?? [];
-    if (!mine.some((b) => b.toLowerCase() === q.toLowerCase())) prefs.set({ brands: [...mine, q] });
-    pick(q);
-  };
+  const addNew = () => { store.addBrands([q]).catch(() => {}); pick(q); };
 
   return html`<${Dialog} onDismiss=${onDismiss} cls="sheet brand-sheet">
     <div class="sheet-title">Merk</div>
