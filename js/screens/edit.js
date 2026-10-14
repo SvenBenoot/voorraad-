@@ -44,7 +44,14 @@ export function EditScreen({ id, code: presetCode, product }) {
   const noteRef = useRef(null);
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
   const grow = (el) => { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
-  useEffect(() => { grow(nameRef.current); grow(noteRef.current); }, []);
+  useEffect(() => {
+    const all = () => { grow(nameRef.current); grow(noteRef.current); };
+    all();
+    // Nog eens na de opmaak (en bij draaien van het scherm): pas dan klopt de breedte en dus het aantal regels.
+    const raf = requestAnimationFrame(all);
+    window.addEventListener('resize', all);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', all); };
+  }, []);
 
   // Nieuw artikel uit de productlijst (of een gescande barcode die erin staat): velden alvast invullen,
   // zonder te overschrijven wat je intussen zelf al typte.
@@ -137,15 +144,24 @@ export function EditScreen({ id, code: presetCode, product }) {
       </div>
 
       <div class="group">
-        <label class="g-row">
-          <${Icon} name="i_place" size=${20} />
-          <input class="g-input" type="text" enterkeyhint="done" placeholder="Plaats, bv. rek links · bak 3" value=${location}
-            onInput=${(e) => setLocation(e.currentTarget.value)} onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+        <label class="g-row g-field">
+          <span class="g-field-icon"><${Icon} name="i_place" size=${20} /></span>
+          <span class="g-field-body">
+            <span class="g-cap">Plaats</span>
+            <input class="g-input" type="text" enterkeyhint="done" placeholder="Bv. rek links · bak 3" value=${location}
+              onInput=${(e) => setLocation(e.currentTarget.value)} onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+          </span>
         </label>
-        <label class="g-row top">
-          <${Icon} name="i_info" size=${20} />
-          <textarea class="g-input note" rows="3" placeholder="Notitie, bv. bestelnummer of lengte" value=${note}
-            ref=${noteRef} onInput=${(e) => { setNote(e.currentTarget.value); grow(e.currentTarget); }}></textarea>
+      </div>
+
+      <div class="group">
+        <label class="g-row g-field">
+          <span class="g-field-icon"><${Icon} name="i_info" size=${20} /></span>
+          <span class="g-field-body">
+            <span class="g-cap">Notitie</span>
+            <textarea class="g-input" rows="1" placeholder="Bv. bestelnummer of lengte" value=${note}
+              ref=${noteRef} onInput=${(e) => { setNote(e.currentTarget.value); grow(e.currentTarget); }}></textarea>
+          </span>
         </label>
       </div>
 
