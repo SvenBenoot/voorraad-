@@ -259,6 +259,16 @@ export const store = {
     });
   },
 
+  /** Zelf toegevoegd merk weghalen, ook bij de artikels die het hadden. */
+  removeBrand(name) {
+    const k = name.trim().toLowerCase();
+    return this.update((d) => {
+      d.brands = d.brands.filter((b) => b.toLowerCase() !== k);
+      d.items = d.items.map((i) => ((i.brand ?? '').trim().toLowerCase() === k ? { ...i, brand: '', updatedAt: Date.now() } : i));
+      return d;
+    });
+  },
+
   // ---- categorieën
 
   async addCategory(name, icon) {
@@ -272,32 +282,6 @@ export const store = {
     return cat;
   },
 
-  updateCategory(cat) {
-    return this.update((d) => {
-      d.categories = d.categories.map((c) => (c.id === cat.id ? { ...cat, name: cat.name.trim() } : c));
-      return d;
-    });
-  },
-
-  /** Verwijdert een categorie; de artikels erin komen bij "Andere". */
-  deleteCategory(id) {
-    if (id === OTHER) return;
-    return this.update((d) => {
-      d.categories = d.categories.filter((c) => c.id !== id);
-      d.items = d.items.map((i) => (i.category === id ? { ...i, category: OTHER } : i));
-      return d;
-    });
-  },
-
-  moveCategory(id, up) {
-    return this.update((d) => {
-      const i = d.categories.findIndex((c) => c.id === id);
-      const j = up ? i - 1 : i + 1;
-      if (i < 0 || j < 0 || j >= d.categories.length) return null;
-      [d.categories[i], d.categories[j]] = [d.categories[j], d.categories[i]];
-      return d;
-    });
-  },
 
   // ---- magazijnlijst
 

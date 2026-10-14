@@ -1,11 +1,11 @@
 // ---- Instellingen
-// Weergave, categorieën, productlijst, Excel, labels, reservekopie en "Over deze app". Wijzigingen worden meteen bewaard.
+// Weergave, productlijst, Excel, labels, reservekopie en "Over deze app". Wijzigingen worden meteen bewaard.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { store, prefs, collator, categoryOf, OTHER } from '../store.js';
+import { store, prefs, collator } from '../store.js';
 import {
-  useData, usePrefs, TopBar, Card, SectionHeader, Button, IconButton, FilterChip, Switch, StatusBanner, Dialog,
-  DialogButtons, ConfirmDialog, CategoryDialog, ItemIcon, fmtDate, plural, toast,
+  useData, usePrefs, TopBar, Card, SectionHeader, Button, FilterChip, Switch, StatusBanner, Dialog,
+  DialogButtons, ConfirmDialog, fmtDate, plural, toast,
 } from '../ui.js';
 import { makeBackup, readBackup, makeExcel, labelsPdf, shareOrDownload } from '../files.js';
 import { back } from '../router.js';
@@ -65,8 +65,6 @@ export function SettingsScreen() {
   const data = useData();
   const p = usePrefs();
   const [notice, setNotice] = useState(null);
-  const [editCat, setEditCat] = useState(null); // categorie, of 'new'
-  const [deleteCat, setDeleteCat] = useState(null);
   const [share, setShare] = useState(null);
   const [restore, setRestore] = useState(null);
   const fileInput = useRef(null);
@@ -135,23 +133,6 @@ export function SettingsScreen() {
         </div>
       <//>
 
-      <${SectionHeader}>Categorieën<//>
-      <${Card} pad=${0}>
-        ${data.categories.map((c, i) => {
-          const n = data.items.filter((it) => categoryOf(data, it).id === c.id).length;
-          return html`<div class="cat-row" key=${c.id}>
-            <${ItemIcon} category=${c} size=${36} />
-            <div class="cat-text"><b>${c.name}</b><small class="faint">${plural(n, 'artikel', 'artikels')}</small></div>
-            <${IconButton} icon="i_up" label="Hoger zetten" cls=${i === 0 ? 'invisible' : 'faint'} onClick=${() => store.moveCategory(c.id, true)} />
-            <${IconButton} icon="i_edit" label="Wijzigen" cls="accent" onClick=${() => setEditCat(c)} />
-            ${c.id !== OTHER ? html`<${IconButton} icon="i_delete" label="Verwijderen" cls="danger-text" onClick=${() => setDeleteCat(c)} />`
-              : html`<span class="icon-btn invisible"></span>`}
-          </div>`;
-        })}
-      <//>
-      <${Button} icon="i_add" cls="wide" onClick=${() => setEditCat('new')}>Categorie toevoegen…<//>
-      <p class="small faint">De volgorde hier is ook de volgorde als je de lijst op categorie sorteert.</p>
-
       <${SectionHeader}>Productlijst<//>
       <${Card}>
         <div class="card-title">Producten uit het CRM</div>
@@ -213,22 +194,6 @@ export function SettingsScreen() {
     ${share === 'labels' && html`<${ShareDialog} icon="i_print" title="Labels klaar"
       make=${() => labelsPdf([...data.items].sort((a, b) => collator.compare(a.name, b.name)))}
       text="Kies in het deelmenu Druk af, of bewaar de PDF in Bestanden." button="Delen…" onDismiss=${() => setShare(null)} />`}
-
-    ${editCat && html`<${CategoryDialog} existing=${editCat === 'new' ? null : editCat} takenNames=${data.categories.map((c) => c.name)}
-      onSave=${(name, icon) => {
-        if (editCat === 'new') store.addCategory(name, icon);
-        else store.updateCategory({ ...editCat, name, icon });
-        setEditCat(null);
-      }} onDismiss=${() => setEditCat(null)} />`}
-
-    ${deleteCat && (() => {
-      const n = data.items.filter((it) => it.category === deleteCat.id).length;
-      return html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${deleteCat.name + ' verwijderen?'}
-        text=${n === 0 ? 'Deze categorie wordt verwijderd. Er zitten geen artikels in.'
-          : `${n === 1 ? 'Het artikel' : `De ${n} artikels`} in deze categorie ${n === 1 ? 'komt' : 'komen'} bij Andere. De artikels zelf blijven bestaan.`}
-        confirmLabel="Verwijderen" onConfirm=${() => { store.deleteCategory(deleteCat.id); setDeleteCat(null); }}
-        onDismiss=${() => setDeleteCat(null)} />`;
-    })()}
 
     ${restore && html`<${ConfirmDialog} kind="danger" icon="i_restore" title="Reservekopie terugzetten?"
       text=${`In de kopie staan ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')}. Alle artikels die nu op deze iPhone staan, worden vervangen door die uit de reservekopie. Dit kan niet ongedaan gemaakt worden.`}
