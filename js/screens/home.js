@@ -1,11 +1,11 @@
 // ---- Startscherm
-// Zoeken, filteren op categorie of "Bijvullen", sorteren, en vegen om te wijzigen of te verwijderen.
+// Zoeken, filteren op categorie of "Bijvullen" en op merk, sorteren, en vegen om te wijzigen of te verwijderen.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
 import { store, prefs, collator, categoryOf, needsRestock, SORT_MODES } from '../store.js';
 import {
   useData, usePrefs, BrandBar, IconButton, Footer, Button, SearchField, FilterChip, StatusBanner, EmptyState,
-  ItemCard, SwipeRow, ConfirmDialog, SectionHeader, plural,
+  ItemCard, SwipeRow, ConfirmDialog, SectionHeader, plural, Dialog, DialogButtons,
 } from '../ui.js';
 import { go } from '../router.js';
 import { BackupDialog, backupDue } from './settings.js';
@@ -17,6 +17,8 @@ export function HomeScreen() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [sortMenu, setSortMenu] = useState(false);
+  const [brand, setBrand] = useState(null);
+  const [brandMenu, setBrandMenu] = useState(false);
   const [askEdit, setAskEdit] = useState(null);
   const [askDelete, setAskDelete] = useState(null);
   const [backup, setBackup] = useState(false);
@@ -24,12 +26,18 @@ export function HomeScreen() {
   const sort = SORT_MODES.find((m) => m.key === p.sort) ?? SORT_MODES[0];
   const activeFilter = filter === 'all' || filter === 'restock' || data.categories.some((c) => c.id === filter) ? filter : 'all';
   const restockCount = data.items.filter(needsRestock).length;
+  // Merken van je eigen artikels, met hoeveel artikels elk.
+  const brandCounts = new Map();
+  for (const it of data.items) if (it.brand) brandCounts.set(it.brand, (brandCounts.get(it.brand) ?? 0) + 1);
+  const brands = [...brandCounts.keys()].sort(collator.compare);
+  const activeBrand = brand && brandCounts.has(brand) ? brand : null;
   const catOrder = Object.fromEntries(data.categories.map((c, i) => [c.id, i]));
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const byName = (a, b) => collator.compare(a.name, b.name);
 
   const shown = data.items
     .filter((it) => activeFilter === 'all' || (activeFilter === 'restock' ? needsRestock(it) : categoryOf(data, it).id === activeFilter))
+    .filter((it) => !activeBrand || it.brand === activeBrand)
     .filter((it) => {
       const hay = `${it.name} ${it.brand ?? ''} ${it.location} ${it.note} ${it.code} ${categoryOf(data, it).name}`.toLowerCase();
       return words.every((w) => hay.includes(w));
@@ -79,6 +87,8 @@ export function HomeScreen() {
         </div>
         <div class="list-head">
           <span class="sub">${plural(shown.length, 'artikel', 'artikels')}</span>
+          ${brands.length > 0 && html`<${Button} kind="ghost" cls=${'brand-filter' + (activeBrand ? ' on' : '')} onClick=${() => setBrandMenu(true)}>
+            ${activeBrand ?? 'Alle merken'}<//>`}
           <div class="menu-anchor">
             <${Button} kind="ghost" icon="i_sort" onClick=${() => setSortMenu(!sortMenu)}>Sorteren: ${sort.label}<//>
             ${sortMenu && html`
@@ -105,7 +115,7 @@ export function HomeScreen() {
 
       ${data.items.length === 0 ? html`<${EmptyState} title="Nog geen artikels"
           text="Tik bovenaan op + om je eerste kabel, fiche of toestel in te geven. Je krijgt er meteen een QR-code bij." />`
-        : shown.length === 0 ? html`<p class="sub nothing">Niets gevonden. Probeer een ander woord of kies bovenaan Alles.</p>` : null}
+        : shown.length === 0 ? html`<p class="sub nothing">Niets gevonden. Probeer een ander woord, of kies bovenaan Alles en Alle merken.</p>` : null}
 
       ${rows}
 
@@ -115,6 +125,14 @@ export function HomeScreen() {
       <${Button} kind="primary" icon="i_scan" cls="wide" onClick=${() => go('/scan')}>Scannen<//>
     <//>
 
+    ${brandMenu && html`<${Dialog} onDismiss=${() => setBrandMenu(false)} cls="sheet">
+      <div class="sheet-title">Toon merk</div>
+      <button type="button" class="sheet-btn" onClick=${() => { setBrand(null); setBrandMenu(false); }}>
+        <span class="sheet-grow">Alle merken</span>${!activeBrand && html`<${Icon} name="i_check" />`}</button>
+      ${brands.map((b) => html`<button type="button" key=${b} class="sheet-btn" onClick=${() => { setBrand(b); setBrandMenu(false); }}>
+        <span class="sheet-grow">${b} <span class="faint">· ${brandCounts.get(b)}</span></span>${activeBrand === b && html`<${Icon} name="i_check" />`}</button>`)}
+      <${DialogButtons}><${Button} onClick=${() => setBrandMenu(false)}>Annuleren<//><//>
+    <//>`}
     ${backup && html`<${BackupDialog} onDismiss=${() => setBackup(false)} />`}
     ${askEdit && html`<${ConfirmDialog} icon="i_edit" title=${askEdit.name + ' wijzigen?'}
       text="Je opent het formulier om naam, categorie, aantal, plaats of foto aan te passen."

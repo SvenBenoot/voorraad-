@@ -3,7 +3,7 @@
 // Afvinken wat in je bak ligt; Klaar telt de afgevinkte stuks bij de voorraad in de bestelwagen.
 import { html, useEffect, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { store, collator, categoryOf, needsRestock } from '../store.js';
+import { store, collator, categoryOf, needsRestock, fullName } from '../store.js';
 import {
   useData, TopBar, IconButton, Footer, Button, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, StepButton,
   ConfirmDialog, Dialog, DialogButtons, SearchField, toast,
@@ -36,7 +36,7 @@ export function RestockScreen() {
     for (const [line, it] of rows) {
       const cat = categoryOf(data, it).name;
       if (cat !== lastCat) { out += `\n\n${cat.toUpperCase()}`; lastCat = cat; }
-      out += `\n${line.done ? '☑' : '☐'} ${line.amount}× ${it.name}${it.location ? ' · ' + it.location : ''}`;
+      out += `\n${line.done ? '☑' : '☐'} ${line.amount}× ${fullName(it)}${it.location ? ' · ' + it.location : ''}`;
     }
     return out;
   };
