@@ -12,6 +12,7 @@ import { Scanner, beep } from '../scanner.js';
 import { PhotoEditor, loadPhoto, toJpeg } from '../photo.js';
 import { go, back, backAndReplace } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
+import { BrandPicker } from '../brands.js';
 
 export function EditScreen({ id, code: presetCode, product }) {
   const data = useData();
@@ -40,6 +41,7 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [busy, setBusy] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
+  const [brandMenu, setBrandMenu] = useState(false);
   const nameRef = useRef(null);
   const noteRef = useRef(null);
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
@@ -160,9 +162,10 @@ export function EditScreen({ id, code: presetCode, product }) {
             onInput=${(e) => { setName(e.currentTarget.value.replace(/\n/g, ' ')); setNameError(null); grow(e.currentTarget); }}
             onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}></textarea>
           ${nameError && html`<span class="small tone-text-red">${nameError}</span>`}
-          <input class="ed-brand" placeholder="Merk" value=${brand} enterkeyhint="done" autocapitalize="words"
-            aria-label="Merk" onInput=${(e) => setBrand(e.currentTarget.value)}
-            onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+          <button type="button" class=${'ed-brand-btn' + (brand ? '' : ' unset')} aria-label="Merk kiezen" onClick=${() => setBrandMenu(true)}>
+            ${brand || 'Merk kiezen'}
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
       </div>
 
@@ -214,6 +217,8 @@ export function EditScreen({ id, code: presetCode, product }) {
       <${Button} kind="secondary" onClick=${leave}>Annuleren<//>
       <${Button} kind="primary" disabled=${busy} onClick=${save}>Bewaren<//>
     <//>
+
+    ${brandMenu && html`<${BrandPicker} value=${brand} onPick=${setBrand} onDismiss=${() => setBrandMenu(false)} />`}
 
     ${catMenu && html`<${Dialog} onDismiss=${() => setCatMenu(false)} cls="sheet">
       <div class="sheet-title">Categorie</div>
