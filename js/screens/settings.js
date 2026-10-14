@@ -126,7 +126,7 @@ export function SettingsScreen() {
       <${SectionHeader}>Exporteren<//>
       <${Card}>
         <div class="card-title">Excel-lijst</div>
-        <p class="sub">Alle artikels in een Excel-bestand: naam, categorie, aantal, minimum, bij te vullen, plaats, QR-code, notitie en datum.</p>
+        <p class="sub">Alle artikels in een Excel-bestand: naam, merk, categorie, aantal, minimum, bij te vullen, plaats, QR-code, notitie en datum.</p>
         <${Button} icon="i_table" onClick=${() => (data.items.length ? setShare('excel') : noItems('ze exporteren'))}>Excel maken…<//>
       <//>
 

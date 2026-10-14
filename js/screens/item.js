@@ -49,7 +49,8 @@ export function ItemScreen({ id }) {
 
       ${needsRestock(item) && html`<${StatusBanner} tone="orange" icon="i_warning"
         title=${item.quantity === 0 ? 'Op · bijvullen' : 'Bijvullen'}
-        text=${`Je hebt er nog ${item.quantity}, minimum is ${item.minimum}. Er zijn er nog ${shortage(item)} nodig.`} />`}
+        text=${item.minimum ? `Je hebt er nog ${item.quantity}, minimum is ${item.minimum}. Er zijn er nog ${shortage(item)} nodig.`
+          : 'Je hebt er geen meer. Er is geen minimum ingesteld, dus staat er 1 op de lijst Aanvullen.'} />`}
 
       <${Card}>
         <div class="qty-row">
