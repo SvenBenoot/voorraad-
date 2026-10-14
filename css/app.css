@@ -443,7 +443,15 @@ p { margin: 4px 0; }
 .g-label { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 16px; font-weight: 600; }
 .g-label small { font-size: 12px; font-weight: 400; color: var(--faint); }
 .g-input { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--text); font-size: 16px; padding: 10px 0; resize: none; overflow: hidden; line-height: 1.35; }
-textarea.g-input.note { min-height: 104px; }
+/* Plaats en notitie: elk een eigen vak met een duidelijk label erboven, zodat je ze niet verwart. */
+.g-field { align-items: flex-start; padding-top: 12px; padding-bottom: 10px; }
+.g-field-icon { flex: none; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent-bg); color: var(--accent); margin-top: 2px; }
+.g-field-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.g-cap { font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--accent); }
+.g-field-value { font-size: 16px; padding-top: 2px; }
+.g-field-chev { align-self: center; }
+.g-field .g-input { flex: none; padding: 2px 0 0; } /* in een kolom zou flex: 1 de hoogte van het meegroeien negeren */
 .stepper { display: flex; align-items: center; gap: 2px; }
 .stepper input { width: 58px; border: 0; outline: none; background: none; text-align: center; color: var(--text);
   font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 6px 0; border-radius: 8px; }
@@ -459,7 +467,6 @@ textarea.g-input.note { min-height: 104px; }
 @media (max-width: 359px) { .ed-icon { width: 80px; height: 80px; } .ed-icon .item-icon { width: 80px !important; height: 80px !important; } .stepper input { width: 46px; } .g-row { padding-left: 14px; } }
 .g-btn { width: 100%; border: 0; background: none; color: inherit; text-align: left; font: inherit; }
 .g-btn:active { background: var(--hover); }
-.g-value { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 16px; font-weight: 600; }
 .chev { flex: none; color: var(--faint); margin-right: 6px; }
 .sheet-grow { flex: 1; }
 
