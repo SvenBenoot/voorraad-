@@ -9,7 +9,7 @@ import {
 import { Icon } from '../icons.js';
 import { QrSvg } from '../qr.js';
 import { Scanner, beep } from '../scanner.js';
-import { go, back, backAndReplace } from '../router.js';
+import { go, back, backAndReplace, home } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
 import { BrandPicker } from '../brands.js';
 import { CategoryPicker } from '../categories.js';
@@ -97,7 +97,8 @@ export function EditScreen({ id, code: presetCode, product }) {
       setBusy(false);
       return;
     }
-    if (original) back();
+    // Na wijzigen meteen terug naar het overzicht.
+    if (original) home();
     // Vanuit de keuzelijst: die mag ook weg, zodat Terug op het artikel naar het startscherm gaat.
     else if (window.location.hash.startsWith('#/maken') && history.state?.depth > 1) backAndReplace('/artikel/' + itemId);
     else go('/artikel/' + itemId, { replace: true });
@@ -216,7 +217,7 @@ export function EditScreen({ id, code: presetCode, product }) {
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
       text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
-      confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); go('/', { replace: true }); }}
+      confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); home(); }}
       onDismiss=${() => setAskDelete(false)} />`}
 
     ${askLeave && html`<${ConfirmDialog} kind="warning" icon="i_warning" title="Niet bewaren?"
