@@ -55,10 +55,10 @@ export function GradientIcon({ name, size = 24 }) {
 }
 
 /**
- * Iconen die je bij een categorie of artikel kan kiezen. De sleutel wordt bewaard, zoals in de Android-app.
+ * Iconen die je bij een artikel kan kiezen. De sleutel wordt bewaard, zoals in de Android-app.
  * Het label en de extra woorden dienen om te zoeken; ze staan niet onder de iconen.
  */
-export const CATEGORY_ICONS = [
+export const ICONS = [
   ['cable', 'Kabel', 'snoer draad'], ['xlr', 'XLR', 'micro audio fiche'], ['dmx', 'DMX', 'licht fiche'],
   ['jack', 'Jack', 'fiche audio'], ['cinch', 'Cinch', 'tulp rca fiche'], ['bnc', 'BNC', 'video sdi fiche'],
   ['speakon', 'speakON', 'luidspreker fiche'], ['dsub', 'D-sub', 'vga sub-d fiche'], ['connector', 'HDMI', 'fiche stekker'],

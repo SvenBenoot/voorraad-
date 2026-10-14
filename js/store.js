@@ -1,6 +1,10 @@
 // ---- Gegevens
 // Zelfde opbouw als de Android-app (voorraad.json), zodat een reservekopie van de ene in de andere past.
-// Alles staat op het toestel zelf in IndexedDB: één record met de gegevens.
+// Waar ze bewaard worden, regelt storage.js.
+import { localStore } from './storage.js';
+
+// De opslag die de app gebruikt. Een online database krijgt dezelfde functies en komt dan hier.
+const backend = localStore;
 
 export const OTHER = 'OTHER';
 
@@ -48,6 +52,8 @@ export const SORT_MODES = [
 ];
 
 export const collator = new Intl.Collator('nl-BE', { sensitivity: 'base', numeric: true });
+/** Tekst om te zoeken: kleine letters en zonder accenten (é → e). */
+export const fold = (t) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 // ---- artikel-hulpjes
 
@@ -81,12 +87,17 @@ export const newId = () => (crypto.randomUUID ? crypto.randomUUID()
 /** Ontbrekende velden aanvullen, zoals kotlinx.serialization dat met standaardwaarden doet. */
 export function normalize(raw) {
   const now = Date.now();
+  const categories = raw?.categories?.length
+    ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice();
+  // Een artikel heeft altijd een eigen icoon. Oudere gegevens (geen icoon = dat van de categorie) krijgen het icoon
+  // dat ze nu tonen, zodat het niet meer meeverandert als je de categorie wijzigt.
+  const iconOf = (catId) => (categories.find((c) => c.id === catId) ?? categories.find((c) => c.id === OTHER))?.icon ?? 'other';
   const d = {
     version: raw?.version ?? 1,
     items: (raw?.items ?? []).map((it) => ({
       id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''), brand: String(it.brand ?? ''),
       category: it.category ?? 'CABLE', quantity: Math.max(0, it.quantity | 0), minimum: Math.max(0, it.minimum | 0),
-      location: it.location ?? '', note: it.note ?? '', icon: it.icon ?? null,
+      location: it.location ?? '', note: it.note ?? '', icon: it.icon || iconOf(it.category ?? 'CABLE'),
       createdAt: it.createdAt ?? now, updatedAt: it.updatedAt ?? now,
     })),
     movements: (raw?.movements ?? []).map((m) => ({
@@ -94,7 +105,7 @@ export function normalize(raw) {
       ...(m.restock ? { restock: true } : {}),
       ...(m.name ? { name: String(m.name) } : {}),
     })),
-    categories: raw?.categories?.length ? raw.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon ?? 'box' })) : DEFAULT_CATEGORIES.slice(),
+    categories,
     // Zelf toegevoegde merken (de merken uit de productlijst en van je artikels komen er vanzelf bij).
     brands: (raw?.brands ?? []).map((b) => String(b).trim()).filter(Boolean),
     // Merken uit de productlijst die je weghaalde; die verschijnen niet meer in de merkenlijst.
@@ -115,36 +126,6 @@ export function normalize(raw) {
   return d;
 }
 
-// ---- IndexedDB
-
-let dbPromise;
-function db() {
-  dbPromise ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open('voorraad', 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore('kv');
-      req.result.createObjectStore('photos'); // niet meer gebruikt (vroeger foto's), blijft voor bestaande installaties
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return dbPromise;
-}
-
-async function tx(store, mode, fn) {
-  const d = await db();
-  return new Promise((resolve, reject) => {
-    const t = d.transaction(store, mode);
-    const s = t.objectStore(store);
-    let result;
-    const r = fn(s);
-    if (r) r.onsuccess = () => { result = r.result; };
-    t.oncomplete = () => resolve(result);
-    t.onerror = () => reject(t.error);
-    t.onabort = () => reject(t.error);
-  });
-}
-
 // ---- winkel (één bron van waarheid, schermen luisteren mee)
 
 let data = normalize(null);
@@ -156,12 +137,9 @@ export const store = {
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
   async load() {
-    const saved = await tx('kv', 'readonly', (s) => s.get('data'));
-    data = normalize(saved);
-    // Foto's zijn er sinds 1.6 niet meer: de oude meteen opruimen, dat spaart plaats op de iPhone.
-    tx('photos', 'readwrite', (s) => { s.clear(); }).catch(() => {});
-    // Vraag de browser om de gegevens niet zomaar op te ruimen bij plaatsgebrek.
-    try { await navigator.storage?.persist?.(); } catch { /* niet erg */ }
+    data = normalize(await backend.loadData());
+    backend.clearOldPhotos().catch(() => {});
+    await backend.keep();
     emit();
   },
 
@@ -172,7 +150,7 @@ export const store = {
     data = next;
     emit();
     try {
-      await tx('kv', 'readwrite', (s) => s.put(data, 'data'));
+      await backend.saveData(data);
     } catch (e) {
       // Bv. geheugen vol: zeggen, anders denk je dat alles bewaard is.
       window.dispatchEvent(new CustomEvent('voorraad-fout', { detail: 'Bewaren lukte niet. Is het geheugen van je iPhone vol? Maak plaats en probeer opnieuw.' }));
@@ -246,8 +224,8 @@ export const store = {
 
   // ---- eigen productlijst (ingelezen uit een CRM-export; los van de gegevens, niet in de reservekopie)
 
-  getCatalog() { return tx('kv', 'readonly', (s) => s.get('catalog')); },
-  setCatalog(value) { return tx('kv', 'readwrite', (s) => (value ? s.put(value, 'catalog') : s.delete('catalog'))); },
+  getCatalog() { return backend.loadCatalog(); },
+  setCatalog(value) { return backend.saveCatalog(value); },
 
   // ---- merken
 
@@ -277,8 +255,9 @@ export const store = {
 
   // ---- categorieën
 
-  async addCategory(name, icon) {
-    const cat = { id: newId(), name: name.trim(), icon };
+  async addCategory(name) {
+    // Het icoon van een categorie toont de app niet meer, maar het veld blijft voor de Android-app.
+    const cat = { id: newId(), name: name.trim(), icon: 'box' };
     // Nieuwe categorie vóór "Andere", die blijft achteraan.
     await this.update((d) => {
       const others = d.categories.filter((c) => c.id === OTHER);
@@ -287,7 +266,6 @@ export const store = {
     });
     return cat;
   },
-
 
   // ---- magazijnlijst
 
@@ -351,7 +329,7 @@ export const store = {
     const next = normalize(raw);
     data = next;
     emit();
-    await tx('kv', 'readwrite', (s) => s.put(data, 'data'));
+    await backend.saveData(data);
   },
 };
 

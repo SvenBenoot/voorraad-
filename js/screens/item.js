@@ -38,10 +38,10 @@ export function ItemScreen({ id }) {
     <//>
     <main class="content">
       <div class="item-head">
-        <${ItemIcon} category=${cat} icon=${item.icon} size=${64} />
+        <${ItemIcon} icon=${item.icon} size=${64} />
         <div>
           <div class="window-title">${item.name}</div>
-          <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip} icon=${cat.icon}>${cat.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
+          <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip}>${cat.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
         </div>
       </div>
 

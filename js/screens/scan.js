@@ -2,7 +2,7 @@
 // Drie standen, zoals in de Android-app: Aantal (venster erbij/eraf), Reeks (alles na elkaar, één keer bewaren)
 // en Openen (artikel tonen).
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
-import { store, categoryOf, needsRestock } from '../store.js';
+import { store, needsRestock } from '../store.js';
 import { findByBarcode } from '../catalog.js';
 import {
   useData, usePrefs, TopBar, IconButton, FilterChip, StatusBanner, Card, Button, StepButton, Dialog, DialogButtons,
@@ -166,7 +166,7 @@ function QuantityDialog({ id, onSave, onOpen, onDismiss }) {
   return html`<${Dialog} onDismiss=${onDismiss}>
     <div class="dialog-body">
       <div class="qd-head">
-        <${ItemIcon} category=${categoryOf(data, item)} icon=${item.icon} size=${56} />
+        <${ItemIcon} icon=${item.icon} size=${56} />
         <div>
           <div class="window-title clamp2">${item.name}</div>
           <div class="sub">Nu ${item.quantity} stuks${item.location ? ' · ' + item.location : ''}</div>
