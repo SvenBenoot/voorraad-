@@ -2,7 +2,8 @@
 // Drie standen, zoals in de Android-app: Aantal (venster erbij/eraf), Reeks (alles na elkaar, één keer bewaren)
 // en Openen (artikel tonen).
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
-import { store, categoryOf } from '../store.js';
+import { store, categoryOf, needsRestock } from '../store.js';
+import { findByBarcode } from '../catalog.js';
 import {
   useData, usePrefs, TopBar, IconButton, FilterChip, StatusBanner, Card, Button, StepButton, Dialog, DialogButtons,
   ConfirmDialog, NumberField, ItemIcon, toast,
@@ -24,6 +25,7 @@ export function ScanScreen() {
   const [mode, setMode] = useState(lastMode);
   const [found, setFound] = useState(null);
   const [unknown, setUnknown] = useState(null);
+  const [product, setProduct] = useState(null); // product uit de productlijst bij een onbekende code
   const [result, setResult] = useState(null);
   const [batch, setBatch] = useState([]); // [[id, aantal]] in volgorde van scannen
   const [take, setTake] = useState(true);
@@ -55,7 +57,7 @@ export function ScanScreen() {
 
     if (p.scanSound) beep();
     const item = store.itemByCode(code);
-    if (!item) { setUnknown(code); return; }
+    if (!item) { setUnknown(code); setProduct(null); findByBarcode(code).then(setProduct); return; }
     if (s.mode === 'OPEN') { go('/artikel/' + item.id); return; }
     setResult(null);
     if (s.mode === 'SERIES') {
@@ -124,7 +126,7 @@ export function ScanScreen() {
       : result ? html`<${StatusBanner} tone=${result.low ? 'orange' : result.delta < 0 ? 'blue' : 'green'}
           icon=${result.low ? 'i_warning' : 'i_check_circle'}
           title=${`${result.delta > 0 ? '+' + result.delta : '−' + -result.delta} · ${result.name}`}
-          text=${result.low ? `Nog ${result.quantity} over · onder het minimum, bijvullen` : `Nog ${result.quantity} over`}
+          text=${result.low ? `Nog ${result.quantity} over · bijvullen` : `Nog ${result.quantity} over`}
           trailing=${html`<${Button} kind="ghost" onClick=${() => { store.adjust(result.id, -result.delta); setResult(null); }}>Ongedaan maken<//>`} />`
       : html`<${StatusBanner} tone="gray" icon="i_qr" title="Klaar om te scannen"
           text=${hasTorch ? 'Hou de code in het kader. Donker? Zet de zaklamp aan.' : 'Hou de code in het kader, op een handbreedte van de camera.'} />`}
@@ -138,14 +140,15 @@ export function ScanScreen() {
         // Nooit onder nul: toon (en maak ongedaan) wat er echt veranderde, niet wat er gevraagd was.
         const real = q - it.quantity;
         if (real === 0) { toast(`Niets afgeteld: er ${it.quantity === 1 ? 'is' : 'zijn'} er ${it.quantity}`); return; }
-        setResult({ id: it.id, name: it.name, delta: real, quantity: q, low: it.minimum > 0 && q < it.minimum });
+        setResult({ id: it.id, name: it.name, delta: real, quantity: q, low: needsRestock({ ...it, quantity: q }) });
       }}
       onOpen=${() => { const id = found; setFound(null); go('/artikel/' + id); }}
       onDismiss=${() => setFound(null)} />`}
 
-    ${unknown && html`<${ConfirmDialog} icon="i_qr" title="Onbekende code"
-      text=${`«${unknown}» hoort nog bij geen enkel artikel. Wil je er een nieuw artikel van maken?`}
-      confirmLabel="Nieuw artikel…" onConfirm=${() => { const c = unknown; setUnknown(null); go('/nieuw/' + encodeURIComponent(c)); }}
+    ${unknown && html`<${ConfirmDialog} icon="i_qr" title=${product ? 'Nog niet in je voorraad' : 'Onbekende code'}
+      text=${product ? `${[product.brand, product.name].filter(Boolean).join(' ')}${product.description ? ' · ' + product.description : ''} staat in de productlijst maar nog niet in je voorraad. Wil je het toevoegen?`
+        : `«${unknown}» hoort nog bij geen enkel artikel. Wil je er een nieuw artikel van maken?`}
+      confirmLabel=${product ? "Toevoegen…" : "Nieuw artikel…"} onConfirm=${() => { const c = unknown; setUnknown(null); go('/nieuw/' + encodeURIComponent(c)); }}
       onDismiss=${() => setUnknown(null)} />`}
   </div>`;
 }

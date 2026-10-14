@@ -13,6 +13,7 @@ import { PhotoEditor, loadPhoto, toJpeg } from '../photo.js';
 import { go, back, backAndReplace } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
 import { BrandPicker } from '../brands.js';
+import { ProductSearch } from './catalog.js';
 
 export function EditScreen({ id, code: presetCode, product }) {
   const data = useData();
@@ -42,6 +43,7 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [photoMenu, setPhotoMenu] = useState(false);
   const [catMenu, setCatMenu] = useState(false);
   const [brandMenu, setBrandMenu] = useState(false);
+  const [linking, setLinking] = useState(false);
   const nameRef = useRef(null);
   const noteRef = useRef(null);
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
@@ -169,6 +171,8 @@ export function EditScreen({ id, code: presetCode, product }) {
         </div>
       </div>
 
+      ${original && html`<${Button} kind="ghost" icon="i_inventory" cls="ed-link" onClick=${() => setLinking(true)}>Merk en referentie uit productlijst…<//>`}
+
       <div class="group">
         <button type="button" class="g-row g-btn" onClick=${() => setCatMenu(true)}>
           <span class="g-label">Categorie</span>
@@ -218,6 +222,17 @@ export function EditScreen({ id, code: presetCode, product }) {
       <${Button} kind="primary" disabled=${busy} onClick=${save}>Bewaren<//>
     <//>
 
+    ${linking && html`<${Dialog} onDismiss=${() => setLinking(false)} cls="sheet brand-sheet">
+      <div class="sheet-title">Uit productlijst</div>
+      <div class="brand-list link-list"><${ProductSearch} onPick=${(pr) => {
+        // Naam = referentie, merk erbij; je eigen notitie blijft staan als die er al is. De QR-code blijft dezelfde (label hangt er al).
+        setName(pr.name); setBrand(pr.brand);
+        if (pr.description && pr.description !== pr.name) setNote((v) => v || pr.description);
+        setLinking(false);
+        requestAnimationFrame(() => { grow(nameRef.current); grow(noteRef.current); });
+      }} /></div>
+      <${DialogButtons}><${Button} onClick=${() => setLinking(false)}>Annuleren<//><//>
+    <//>`}
     ${brandMenu && html`<${BrandPicker} value=${brand} onPick=${setBrand} onDismiss=${() => setBrandMenu(false)} />`}
 
     ${catMenu && html`<${Dialog} onDismiss=${() => setCatMenu(false)} cls="sheet">

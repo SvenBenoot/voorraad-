@@ -482,3 +482,11 @@ p { margin: 4px 0; }
 .brand-search { padding: 4px 12px 10px; }
 .brand-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .brand-tip { padding: 12px 20px; margin: 0; border-top: 1px solid var(--line); }
+.list-head { gap: 4px; }
+.list-head .sub { flex: 1; }
+.brand-filter { max-width: 40%; }
+.brand-filter span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-filter.on { color: var(--accent); background: var(--accent-bg); }
+.ed-link { align-self: flex-start; margin: -4px 0 -2px -10px; }
+.link-list { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.link-list .product-search { position: sticky; top: 0; z-index: 1; background: var(--card); padding: 2px 0 6px; }

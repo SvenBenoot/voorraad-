@@ -1,19 +1,47 @@
-// ---- Camera en QR-scanner
-// Safari op iPhone kent geen ingebouwde barcodelezer, dus we lezen QR-codes zelf met jsQR.
-// Waar de browser wel een BarcodeDetector heeft (Chrome op Android), lezen we daarmee ook gewone barcodes.
+// ---- Camera en scanner
+// Safari op iPhone kent geen ingebouwde barcodelezer, dus we lezen QR-codes zelf met jsQR
+// en streepjescodes (EAN/UPC op verpakkingen, Code 128/39) met ZXing.
+// Waar de browser wel een BarcodeDetector heeft (Chrome op Android), lezen we daarmee alles.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
 
-let jsQrLoading;
-function loadJsQr() {
-  if (window.jsQR) return Promise.resolve(window.jsQR);
-  jsQrLoading ??= new Promise((resolve, reject) => {
+const scripts = {};
+function loadScript(file, global) {
+  if (window[global]) return Promise.resolve(window[global]);
+  scripts[file] ??= new Promise((resolve, reject) => {
     const s = document.createElement('script');
-    s.src = new URL('../lib/jsQR.js', import.meta.url).href;
-    s.onload = () => resolve(window.jsQR);
-    s.onerror = reject;
+    s.src = new URL('../lib/' + file, import.meta.url).href;
+    s.onload = () => resolve(window[global]);
+    s.onerror = (e) => { delete scripts[file]; reject(e); };
     document.head.appendChild(s);
   });
-  return jsQrLoading;
+  return scripts[file];
+}
+
+/** Lezer voor streepjescodes: zoekt in een horizontale strook door het midden van het beeld. */
+async function makeBarcodeReader() {
+  const ZX = await loadScript('zxing.min.js', 'ZXing');
+  const F = ZX.BarcodeFormat;
+  const hints = new Map([
+    [ZX.DecodeHintType.POSSIBLE_FORMATS, [F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39]],
+    [ZX.DecodeHintType.TRY_HARDER, true],
+  ]);
+  const reader = new ZX.MultiFormatOneDReader(hints);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  return (video) => {
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const w = Math.min(800, vw);
+    const bandH = vh * 0.35;
+    const h = Math.round((bandH * w) / vw);
+    canvas.width = w; canvas.height = h;
+    ctx.drawImage(video, 0, (vh - bandH) / 2, vw, bandH, 0, 0, w, h);
+    const rgba = ctx.getImageData(0, 0, w, h).data;
+    const lum = new Uint8ClampedArray(w * h);
+    for (let i = 0, j = 0; j < lum.length; i += 4, j++) lum[j] = (rgba[i] * 77 + rgba[i + 1] * 150 + rgba[i + 2] * 29) >> 8;
+    try {
+      return reader.decode(new ZX.BinaryBitmap(new ZX.HybridBinarizer(new ZX.RGBLuminanceSource(lum, w, h))), hints).getText();
+    } catch { return null; } finally { reader.reset(); }
+  };
 }
 
 async function makeDetector() {
@@ -26,7 +54,11 @@ async function makeDetector() {
       }
     } catch { /* val terug op jsQR */ }
   }
-  const jsQR = await loadJsQr();
+  const jsQR = await loadScript('jsQR.js', 'jsQR');
+  // Laadt de streepjescodelezer op de achtergrond; tot die klaar is, enkel QR.
+  let barcode = null;
+  makeBarcodeReader().then((r) => { barcode = r; }).catch(() => {});
+  let turn = 0;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   return async (video) => {
@@ -39,7 +71,9 @@ async function makeDetector() {
     ctx.drawImage(video, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, size, size);
     const img = ctx.getImageData(0, 0, size, size);
     const res = jsQR(img.data, size, size, { inversionAttempts: 'attemptBoth' });
-    return res?.data || null;
+    if (res?.data) return res.data;
+    // Streepjescode: om het andere beeld, zodat QR-labels even snel blijven.
+    return barcode && turn++ % 2 === 0 ? barcode(video) : null;
   };
 }
 

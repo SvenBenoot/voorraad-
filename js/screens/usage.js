@@ -5,7 +5,7 @@
 // verbruik niet. Zo telt "+5 erbij, daarna −4 bij de klant" gewoon als 4 gebruikt.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { collator, categoryOf, OTHER } from '../store.js';
+import { collator, categoryOf, OTHER, fullName } from '../store.js';
 import { useData, TopBar, IconButton, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, toast, plural } from '../ui.js';
 import { shareText } from '../files.js';
 import { go, back } from '../router.js';
@@ -81,7 +81,7 @@ export function UsageScreen() {
     for (const [it, n] of rows) {
       const cat = categoryOf(data, it).name;
       if (cat !== lastCat) { out += `\n\n${cat.toUpperCase()}`; lastCat = cat; }
-      out += `\n${n}× ${it.name}`;
+      out += `\n${n}× ${fullName(it)}`;
     }
     return out + `\n\nTotaal: ${plural(total, 'stuk', 'stuks')}`;
   };

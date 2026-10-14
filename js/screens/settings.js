@@ -1,5 +1,5 @@
 // ---- Instellingen
-// Weergave, categorieën, Excel, labels, reservekopie en "Over deze app". Wijzigingen worden meteen bewaard.
+// Weergave, categorieën, productlijst, Excel, labels, reservekopie en "Over deze app". Wijzigingen worden meteen bewaard.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
 import { store, prefs, collator, categoryOf, OTHER } from '../store.js';
@@ -10,6 +10,7 @@ import {
 import { makeBackup, readBackup, makeExcel, labelsPdf, shareOrDownload } from '../files.js';
 import { back } from '../router.js';
 import { VERSION } from '../version.js';
+import { loadCatalog, resetCatalog } from '../catalog.js';
 
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
@@ -69,6 +70,34 @@ export function SettingsScreen() {
   const [share, setShare] = useState(null);
   const [restore, setRestore] = useState(null);
   const fileInput = useRef(null);
+  const xlsxInput = useRef(null);
+  // Productlijst: hoeveel producten, en of het een zelf ingelezen export is.
+  const [catInfo, setCatInfo] = useState(null);
+  const [catBusy, setCatBusy] = useState(false);
+  const refreshCatalog = async () => {
+    resetCatalog();
+    const [own, all] = await Promise.all([store.getCatalog().catch(() => null), loadCatalog().catch(() => null)]);
+    setCatInfo({ own: own ? { date: own.date, file: own.file } : null, count: all?.length ?? 0 });
+  };
+  useEffect(() => { refreshCatalog(); }, []);
+
+  const onCatalogFile = async (e) => {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = '';
+    if (!file) return;
+    setCatBusy(true);
+    try {
+      const { parseCatalogXlsx } = await import('../catalog-import.js');
+      const rows = parseCatalogXlsx(new Uint8Array(await file.arrayBuffer()));
+      await store.setCatalog({ rows, date: Date.now(), file: file.name });
+      await refreshCatalog();
+      setNotice({ ok: true, title: 'Productlijst ingelezen', text: `${rows.length.toLocaleString('nl-BE')} producten uit ${file.name}.` });
+    } catch {
+      setNotice({ ok: false, title: 'Inlezen mislukt', text: 'Dit bestand kon niet gelezen worden. Kies de Excel-export (.xlsx) uit het CRM met de kolommen Merk, Interne referentie, Barcode en Naam.' });
+    }
+    setCatBusy(false);
+    window.scrollTo(0, 0);
+  };
 
   const themes = [['SYSTEM', 'Volgens systeem'], ['LIGHT', 'Licht'], ['DARK', 'Donker']];
   const noItems = (what) => setNotice({ ok: false, title: 'Nog geen artikels', text: `Voeg eerst artikels toe, dan kan je ${what}.` });
@@ -122,6 +151,21 @@ export function SettingsScreen() {
       <//>
       <${Button} icon="i_add" cls="wide" onClick=${() => setEditCat('new')}>Categorie toevoegen…<//>
       <p class="small faint">De volgorde hier is ook de volgorde als je de lijst op categorie sorteert.</p>
+
+      <${SectionHeader}>Productlijst<//>
+      <${Card}>
+        <div class="card-title">Producten uit het CRM</div>
+        <p class="sub">De lijst waaruit je kiest bij Nieuw artikel. Komt er een nieuwe export uit het CRM, lees die hier in.</p>
+        <p class="small faint">${!catInfo ? 'Laden…' : `${catInfo.count.toLocaleString('nl-BE')} producten · `
+          + (catInfo.own ? `ingelezen op ${fmtDate(catInfo.own.date, false)} uit ${catInfo.own.file}` : 'meegeleverde lijst')}</p>
+        <div class="btn-row wrap">
+          <${Button} icon="i_upload" disabled=${catBusy} onClick=${() => xlsxInput.current.click()}>${catBusy ? 'Bezig met inlezen…' : 'Excel inlezen…'}<//>
+          ${catInfo?.own && html`<${Button} kind="ghost" icon="i_restore" onClick=${async () => {
+            await store.setCatalog(null); await refreshCatalog(); toast('Meegeleverde productlijst terug in gebruik');
+          }}>Meegeleverde lijst<//>`}
+        </div>
+        <input ref=${xlsxInput} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange=${onCatalogFile} />
+      <//>
 
       <${SectionHeader}>Exporteren<//>
       <${Card}>

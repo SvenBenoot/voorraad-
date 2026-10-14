@@ -28,6 +28,9 @@ export const collator = new Intl.Collator('nl-BE', { sensitivity: 'base', numeri
 
 // ---- artikel-hulpjes
 
+/** Naam met merk ervoor, voor lijsten die je doorstuurt (bv. "Procab CLA901/1"). */
+export const fullName = (it) => (it.brand && !it.name.toLowerCase().startsWith(it.brand.toLowerCase()) ? `${it.brand} ${it.name}` : it.name);
+
 // Zonder minimum telt "op" ook als bijvullen: dan neem je er minstens 1 mee.
 const target = (it) => Math.max(it.minimum, 1);
 export const needsRestock = (it) => it.quantity < target(it);
@@ -207,6 +210,11 @@ export const store = {
     });
     if (photo) await this.deletePhoto(photo);
   },
+
+  // ---- eigen productlijst (ingelezen uit een CRM-export; los van de gegevens, niet in de reservekopie)
+
+  getCatalog() { return tx('kv', 'readonly', (s) => s.get('catalog')); },
+  setCatalog(value) { return tx('kv', 'readwrite', (s) => (value ? s.put(value, 'catalog') : s.delete('catalog'))); },
 
   // ---- merken
 
