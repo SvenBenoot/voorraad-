@@ -10,12 +10,12 @@ import { loadCatalog } from './catalog.js';
 let fromCatalog = [];
 
 function allBrands() {
-  const seen = new Map();
+  const seen = new Map(store.data.hiddenBrands.map((b) => [b.toLowerCase(), null]));
   for (const b of [...fromCatalog, ...store.data.items.map((i) => i.brand), ...store.data.brands]) {
     const t = (b ?? '').trim();
     if (t && !seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
   }
-  return [...seen.values()].sort(collator.compare);
+  return [...seen.values()].filter(Boolean).sort(collator.compare);
 }
 
 export function BrandPicker({ value, onPick, onDismiss }) {
@@ -45,9 +45,6 @@ export function BrandPicker({ value, onPick, onDismiss }) {
   const used = new Map();
   for (const it of store.data.items) { const k = (it.brand ?? '').trim().toLowerCase(); if (k) used.set(k, (used.get(k) ?? 0) + 1); }
   hits.sort((a, b) => !used.has(a.toLowerCase()) - !used.has(b.toLowerCase()));
-  // Enkel zelf toegevoegde merken kan je verwijderen; die uit de productlijst blijven.
-  const catalogSet = new Set(fromCatalog.map((b) => (b ?? '').trim().toLowerCase()));
-  const own = new Set(store.data.brands.map((b) => b.toLowerCase()).filter((b) => !catalogSet.has(b)));
   const pick = (b) => { onPick(b); onDismiss(); };
   const addNew = (name = q) => {
     const t = name.trim();
@@ -77,7 +74,6 @@ export function BrandPicker({ value, onPick, onDismiss }) {
             ${n && html`<span class="pick-sub">${n} ${n === 1 ? 'artikel' : 'artikels'}</span>`}
             ${on && html`<span class="pick-check"><${Icon} name="i_check" size=${16} /></span>`}
           </button>`;
-          if (!own.has(b.toLowerCase())) return tile;
           return html`<div class="pick-wrap" key=${b}>${tile}
             <button type="button" class="pick-del" aria-label=${b + ' verwijderen'} onClick=${() => setRemoving(b)}><${Icon} name="i_delete" size=${18} /></button>
           </div>`;
