@@ -1,7 +1,7 @@
 // ---- Offline werken
 // Alle bestanden van de app worden bij de eerste keer bewaard, zodat de app ook zonder internet opent
 // (in de bestelwagen, in een kelder…). Nieuwe versie = CACHE-naam ophogen (zelfde als js/version.js).
-const CACHE = 'voorraad-1.4.1';
+const CACHE = 'voorraad-1.4.2';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/files.js', 'js/icons.js', 'js/material.js', 'js/photo.js', 'js/qr.js', 'js/router.js',
@@ -22,10 +22,12 @@ self.addEventListener('activate', (e) => {
 });
 
 // Eerst het netwerk (dan heb je altijd de nieuwste versie), anders uit de cache.
+// cache: 'no-cache' = altijd bij GitHub navragen of het bestand nog klopt; anders gebruikt Safari tot 10 minuten
+// een oude kopie (bv. nieuwe app.js met oude app.css, waardoor knoppen er raar uitzien).
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
         return res;

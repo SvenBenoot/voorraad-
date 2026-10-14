@@ -474,7 +474,7 @@ p { margin: 4px 0; }
 .cat-brand { color: var(--accent) !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: .4px; font-size: 11px !important; }
 .cat-name { font-size: 15px; overflow-wrap: anywhere; }
 .cat-row .pill { min-width: 0; }
-.ed-brand-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 4px 0;
+.ed-brand-btn { -webkit-appearance: none; appearance: none; border-radius: 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 4px 0;
   color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; }
 .ed-brand-btn.unset { color: var(--faint); font-weight: 400; }
 .ed-brand-btn .chev { margin: 0; }
