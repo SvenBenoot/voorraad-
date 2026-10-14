@@ -12,6 +12,7 @@ import { Scanner, beep } from '../scanner.js';
 import { go, back, backAndReplace } from '../router.js';
 import { loadCatalog, findByBarcode } from '../catalog.js';
 import { BrandPicker } from '../brands.js';
+import { CategoryPicker } from '../categories.js';
 
 export function EditScreen({ id, code: presetCode, product }) {
   const data = useData();
@@ -31,7 +32,7 @@ export function EditScreen({ id, code: presetCode, product }) {
   const [icon, setIcon] = useState(original?.icon ?? null);
   const [nameError, setNameError] = useState(null);
   const [codeError, setCodeError] = useState(null);
-  const [newCategory, setNewCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState(null); // null = dicht, anders de voorgestelde naam
   const [askDelete, setAskDelete] = useState(false);
   const [askLeave, setAskLeave] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -168,15 +169,8 @@ export function EditScreen({ id, code: presetCode, product }) {
 
     ${brandMenu && html`<${BrandPicker} value=${brand} onPick=${setBrand} onDismiss=${() => setBrandMenu(false)} />`}
 
-    ${catMenu && html`<${Dialog} onDismiss=${() => setCatMenu(false)} cls="sheet">
-      <div class="sheet-title">Categorie</div>
-      ${data.categories.map((c) => html`<button type="button" key=${c.id} class="sheet-btn" onClick=${() => { setCategory(c.id); setCatMenu(false); }}>
-        <span class="sheet-grow">${c.name}</span>
-        ${categoryOf(data, category).id === c.id && html`<${Icon} name="i_check" />`}
-      </button>`)}
-      <button type="button" class="sheet-btn sheet-add" onClick=${() => { setCatMenu(false); setNewCategory(true); }}>Nieuwe categorie…</button>
-      <${DialogButtons}><${Button} onClick=${() => setCatMenu(false)}>Annuleren<//><//>
-    <//>`}
+    ${catMenu && html`<${CategoryPicker} value=${categoryOf(data, category).id} onPick=${setCategory}
+      onNew=${(n) => setNewCategory(n)} onDismiss=${() => setCatMenu(false)} />`}
 
     ${iconMenu && html`<${Dialog} onDismiss=${() => setIconMenu(false)} cls="sheet">
       <div class="sheet-title">Icoon</div>
@@ -198,9 +192,9 @@ export function EditScreen({ id, code: presetCode, product }) {
       <div class="pad"><${Button} kind="secondary" cls="wide" onClick=${() => setScanning(false)}>Annuleren<//></div>
     </div>`}
 
-    ${newCategory && html`<${CategoryDialog} takenNames=${data.categories.map((c) => c.name)}
-      onSave=${async (n, icon) => { setNewCategory(false); setCategory((await store.addCategory(n, icon)).id); }}
-      onDismiss=${() => setNewCategory(false)} />`}
+    ${newCategory != null && html`<${CategoryDialog} initialName=${newCategory} takenNames=${data.categories.map((c) => c.name)}
+      onSave=${async (n, icon) => { setNewCategory(null); setCategory((await store.addCategory(n, icon)).id); }}
+      onDismiss=${() => setNewCategory(null)} />`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
       text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."

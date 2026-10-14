@@ -230,8 +230,8 @@ export function ConfirmDialog({ kind = 'question', icon, title, text, confirmLab
 }
 
 /** Categorie toevoegen of wijzigen: naam en icoon in één venster. */
-export function CategoryDialog({ existing, takenNames, onSave, onDismiss }) {
-  const [name, setName] = useState(existing?.name ?? '');
+export function CategoryDialog({ existing, initialName = '', takenNames, onSave, onDismiss }) {
+  const [name, setName] = useState(existing?.name ?? initialName);
   const [icon, setIcon] = useState(existing?.icon ?? 'box');
   const [error, setError] = useState(null);
   const save = () => {
