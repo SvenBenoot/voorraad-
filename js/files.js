@@ -74,7 +74,7 @@ export async function readBackup(file) {
 // ---- Excel
 
 const COLUMNS = [
-  ['Naam', 32], ['Categorie', 16], ['Aantal', 9], ['Minimum', 10], ['Bij te vullen', 13],
+  ['Naam', 32], ['Merk', 16], ['Categorie', 16], ['Aantal', 9], ['Minimum', 10], ['Bij te vullen', 13],
   ['Plaats', 22], ['QR-code', 13], ['Notitie', 40], ['Laatst gewijzigd', 18],
 ];
 
@@ -96,8 +96,9 @@ export function makeExcel() {
   items.forEach((it, r) => {
     const n = r + 2;
     const cells = [
-      txt('A' + n, it.name), txt('B' + n, categoryOf(data, it).name), num('C' + n, it.quantity), num('D' + n, it.minimum),
-      num('E' + n, shortage(it)), txt('F' + n, it.location), txt('G' + n, it.code), txt('H' + n, it.note), txt('I' + n, fmt(it.updatedAt)),
+      txt('A' + n, it.name), txt('B' + n, it.brand ?? ''), txt('C' + n, categoryOf(data, it).name), num('D' + n, it.quantity),
+      num('E' + n, it.minimum), num('F' + n, shortage(it)), txt('G' + n, it.location), txt('H' + n, it.code), txt('I' + n, it.note),
+      txt('J' + n, fmt(it.updatedAt)),
     ];
     rows += `<row r="${n}">${cells.join('')}</row>`;
   });
@@ -107,7 +108,7 @@ export function makeExcel() {
     // Kopregel vastzetten, zodat je die blijft zien als je naar beneden scrolt.
     + '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
     + '<cols>' + COLUMNS.map(([, w], i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + '</cols>'
-    + `<sheetData>${rows}</sheetData><autoFilter ref="A1:I${items.length + 1}"/></worksheet>`;
+    + `<sheetData>${rows}</sheetData><autoFilter ref="A1:J${items.length + 1}"/></worksheet>`;
 
   const files = {
     '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

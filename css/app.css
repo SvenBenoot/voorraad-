@@ -463,3 +463,16 @@ p { margin: 4px 0; }
 .g-value { display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-size: 16px; font-weight: 600; }
 .chev { flex: none; color: var(--faint); margin-right: 6px; }
 .sheet-grow { flex: 1; }
+
+/* ---- nieuw artikel: zelf maken of uit de productlijst */
+
+.cat-own { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; color: inherit; font: inherit; padding: 14px 10px 14px 14px; }
+.cat-own-icon { width: 48px; height: 48px; border-radius: 14px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: var(--brand-diag); color: var(--on-brand); box-shadow: 0 6px 16px -6px var(--brand1); }
+.cat-row { min-height: 64px; align-items: center; }
+.cat-row .g-label { gap: 1px; }
+.cat-brand { color: var(--accent) !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: .4px; font-size: 11px !important; }
+.cat-name { font-size: 15px; overflow-wrap: anywhere; }
+.cat-row .pill { min-width: 0; }
+.ed-brand { width: 100%; border: 0; outline: none; background: none; color: var(--accent); font-size: 15px; font-weight: 600; padding: 2px 0; }
+.ed-brand::placeholder { color: var(--faint); font-weight: 400; }

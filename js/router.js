@@ -20,6 +20,13 @@ export function back() {
   else go('/', { replace: true });
 }
 
+/** Eén scherm terug en dat scherm vervangen door [path], bv. Nieuw artikel → keuzelijst wegdoen na Bewaren. */
+export function backAndReplace(path) {
+  if ((history.state?.depth ?? 0) < 1) { go(path, { replace: true }); return; }
+  window.addEventListener('popstate', () => go(path, { replace: true }), { once: true });
+  history.back();
+}
+
 export function useRoute() {
   const [path, setPath] = useState(current());
   useEffect(() => {

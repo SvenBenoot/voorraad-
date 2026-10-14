@@ -107,7 +107,7 @@ function PickerDialog({ data, onPick, onDismiss }) {
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const options = data.items
     .filter((it) => !onList.has(it.id))
-    .filter((it) => words.every((w) => `${it.name} ${it.location} ${categoryOf(data, it).name}`.toLowerCase().includes(w)))
+    .filter((it) => words.every((w) => `${it.name} ${it.brand ?? ''} ${it.location} ${categoryOf(data, it).name}`.toLowerCase().includes(w)))
     .sort((a, b) => collator.compare(a.name, b.name));
   return html`<${Dialog} onDismiss=${onDismiss}>
     <div class="dialog-body">

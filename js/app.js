@@ -12,13 +12,16 @@ import { ScanScreen } from './screens/scan.js';
 import { RestockScreen } from './screens/restock.js';
 import { SettingsScreen } from './screens/settings.js';
 import { UsageScreen } from './screens/usage.js';
+import { CatalogScreen } from './screens/catalog.js';
 
 function screenFor(path) {
   const [, a, b] = path.split('/');
   switch (a) {
     case 'artikel': return html`<${ItemScreen} key=${'a' + b} id=${b} />`;
     case 'wijzigen': return html`<${EditScreen} key=${'w' + b} id=${b} />`;
-    case 'nieuw': return html`<${EditScreen} key=${'n' + (b ?? '')} code=${b ? decodeURIComponent(b) : undefined} />`;
+    // Nieuw zonder code: eerst kiezen tussen zelf maken en de productlijst. Met code: komt van een scan.
+    case 'nieuw': return b ? html`<${EditScreen} key=${'n' + b} code=${decodeURIComponent(b)} />` : html`<${CatalogScreen} />`;
+    case 'maken': return html`<${EditScreen} key=${'m' + (b ?? '')} product=${b} />`;
     case 'scan': return html`<${ScanScreen} />`;
     case 'aanvullen': return html`<${RestockScreen} />`;
     case 'verbruik': return html`<${UsageScreen} />`;

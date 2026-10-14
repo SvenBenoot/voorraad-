@@ -31,7 +31,7 @@ export function HomeScreen() {
   const shown = data.items
     .filter((it) => activeFilter === 'all' || (activeFilter === 'restock' ? needsRestock(it) : categoryOf(data, it).id === activeFilter))
     .filter((it) => {
-      const hay = `${it.name} ${it.location} ${it.note} ${it.code} ${categoryOf(data, it).name}`.toLowerCase();
+      const hay = `${it.name} ${it.brand ?? ''} ${it.location} ${it.note} ${it.code} ${categoryOf(data, it).name}`.toLowerCase();
       return words.every((w) => hay.includes(w));
     })
     .sort({
@@ -68,7 +68,7 @@ export function HomeScreen() {
     <//>
     <main class="content">
       ${data.items.length > 0 && html`
-        <${SearchField} value=${query} onInput=${setQuery} hint="Zoeken op naam, plaats of code" />
+        <${SearchField} value=${query} onInput=${setQuery} hint="Zoeken op naam, merk, plaats of code" />
         <div class="chip-row">
           <${FilterChip} selected=${activeFilter === 'all'} onClick=${() => setFilter('all')}>Alles · ${data.items.length}<//>
           <${FilterChip} selected=${activeFilter === 'restock'} onClick=${() => setFilter('restock')}>Bijvullen · ${restockCount}<//>
