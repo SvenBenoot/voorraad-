@@ -56,7 +56,7 @@ export function normalize(raw) {
   const d = {
     version: raw?.version ?? 1,
     items: (raw?.items ?? []).map((it) => ({
-      id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''),
+      id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''), brand: String(it.brand ?? ''),
       category: it.category ?? 'CABLE', quantity: Math.max(0, it.quantity | 0), minimum: Math.max(0, it.minimum | 0),
       location: it.location ?? '', note: it.note ?? '', photo: it.photo ?? null,
       createdAt: it.createdAt ?? now, updatedAt: it.updatedAt ?? now,

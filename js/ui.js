@@ -140,7 +140,7 @@ export function ItemCard({ item, category, onClick }) {
     <${ItemIcon} category=${category} photo=${item.photo} />
     <div class="item-body">
       <div class="card-title clamp2">${item.name}</div>
-      <div class="chips"><${Chip}>${category.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
+      <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip}>${category.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
       ${needsRestock(item) && html`<div class="shortage tone-text-orange"><i class="dot"></i>Nog ${shortage(item)} nodig · minimum ${item.minimum}</div>`}
     </div>
     <div class="item-end">

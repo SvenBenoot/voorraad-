@@ -43,7 +43,7 @@ export function ItemScreen({ id }) {
         ${!photo && html`<${ItemIcon} category=${cat} size=${64} />`}
         <div>
           <div class="window-title">${item.name}</div>
-          <div class="chips"><${Chip} icon=${cat.icon}>${cat.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
+          <div class="chips">${item.brand && html`<${Chip}>${item.brand}<//>`}<${Chip} icon=${cat.icon}>${cat.name}<//>${item.location && html`<${Chip}>${item.location}<//>`}</div>
         </div>
       </div>
 

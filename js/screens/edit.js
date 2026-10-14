@@ -1,5 +1,5 @@
 // ---- Artikel toevoegen of wijzigen
-// Naam, categorie, aantal, minimum, plaats, foto, QR-code en notitie. Pas bij Bewaren wordt iets weggeschreven.
+// Naam, merk, categorie, aantal, minimum, plaats, foto, QR-code en notitie. Pas bij Bewaren wordt iets weggeschreven.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { store, newId, categoryOf } from '../store.js';
 import {
@@ -10,15 +10,17 @@ import { Icon } from '../icons.js';
 import { QrSvg } from '../qr.js';
 import { Scanner, beep } from '../scanner.js';
 import { PhotoEditor, loadPhoto, toJpeg } from '../photo.js';
-import { go, back } from '../router.js';
+import { go, back, backAndReplace } from '../router.js';
+import { loadCatalog, findByBarcode } from '../catalog.js';
 
-export function EditScreen({ id, code: presetCode }) {
+export function EditScreen({ id, code: presetCode, product }) {
   const data = useData();
   const p = usePrefs();
   const original = id ? data.items.find((i) => i.id === id) : null;
   const itemId = useRef(original?.id ?? newId()).current;
 
   const [name, setName] = useState(original?.name ?? '');
+  const [brand, setBrand] = useState(original?.brand ?? '');
   const [category, setCategory] = useState(original?.category ?? data.categories[0]?.id ?? 'CABLE');
   const [quantity, setQuantity] = useState(original?.quantity ?? 1);
   const [minimum, setMinimum] = useState(original?.minimum ?? 0);
@@ -43,6 +45,24 @@ export function EditScreen({ id, code: presetCode }) {
   // Naam en notitie groeien mee met de tekst, zonder schuifbalk.
   const grow = (el) => { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
   useEffect(() => { grow(nameRef.current); grow(noteRef.current); }, []);
+
+  // Nieuw artikel uit de productlijst (of een gescande barcode die erin staat): velden alvast invullen,
+  // zonder te overschrijven wat je intussen zelf al typte.
+  useEffect(() => {
+    if (original) return;
+    let stop = false;
+    const fill = (p) => {
+      if (stop || !p) return;
+      setName((v) => v || p.name);
+      setBrand((v) => v || p.brand);
+      if (p.description && p.description !== p.name) setNote((v) => v || p.description);
+      if (product != null && p.barcode && !store.itemByCode(p.barcode)) setCode(p.barcode);
+      requestAnimationFrame(() => { grow(nameRef.current); grow(noteRef.current); });
+    };
+    if (product != null) loadCatalog().then((all) => fill(all[+product])).catch(() => toast('De productlijst kon niet geladen worden'));
+    else if (presetCode) findByBarcode(presetCode).then(fill);
+    return () => { stop = true; };
+  }, []);
   const keptUrl = usePhotoUrl(original?.photo);
   const camInput = useRef(null);
   const libInput = useRef(null);
@@ -51,8 +71,8 @@ export function EditScreen({ id, code: presetCode }) {
 
   const shownPhoto = photo === 'keep' ? keptUrl : photo ? newPhotoUrl : null;
   const dirty = !original
-    ? name.trim() !== '' || photo !== null
-    : name !== original.name || category !== original.category || quantity !== original.quantity
+    ? name.trim() !== '' || brand.trim() !== '' || photo !== null
+    : name !== original.name || brand !== (original.brand ?? '') || category !== original.category || quantity !== original.quantity
       || minimum !== original.minimum || location !== original.location || note !== original.note
       || code !== original.code || photo !== (original.photo ? 'keep' : null);
 
@@ -105,7 +125,7 @@ export function EditScreen({ id, code: presetCode }) {
       const now = Date.now();
       await store.save({
         ...(original ?? { id: itemId, createdAt: now }),
-        code: code.trim(), name: trimmed, category, quantity, minimum,
+        code: code.trim(), name: trimmed, brand: brand.trim(), category, quantity, minimum,
         location: location.trim(), note: note.trim(), photo: photoName,
       });
       if (original?.photo && original.photo !== photoName) await store.deletePhoto(original.photo);
@@ -115,6 +135,8 @@ export function EditScreen({ id, code: presetCode }) {
       return;
     }
     if (original) back();
+    // Vanuit de keuzelijst: die mag ook weg, zodat Terug op het artikel naar het startscherm gaat.
+    else if (window.location.hash.startsWith('#/maken') && history.state?.depth > 1) backAndReplace('/artikel/' + itemId);
     else go('/artikel/' + itemId, { replace: true });
   };
 
@@ -138,6 +160,9 @@ export function EditScreen({ id, code: presetCode }) {
             onInput=${(e) => { setName(e.currentTarget.value.replace(/\n/g, ' ')); setNameError(null); grow(e.currentTarget); }}
             onKeyDown=${(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}></textarea>
           ${nameError && html`<span class="small tone-text-red">${nameError}</span>`}
+          <input class="ed-brand" placeholder="Merk" value=${brand} enterkeyhint="done" autocapitalize="words"
+            aria-label="Merk" onInput=${(e) => setBrand(e.currentTarget.value)}
+            onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
         </div>
       </div>
 
