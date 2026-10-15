@@ -74,7 +74,7 @@ export function RestockScreen() {
     <//>
     <main class="content">
       ${rows.length === 0 ? html`<${EmptyState} icon="i_check_circle" title="Niets aan te vullen"
-          text="Niets is op en alles zit boven het minimum. Wil je toch iets meenemen? Tik op Ander artikel… om het op de lijst te zetten." />`
+          text="Alles is op voorraad." />`
         : html`
         <${Card}>
           <div class="progress-head">
@@ -84,7 +84,7 @@ export function RestockScreen() {
           <div class="progress"><i style=${`width:${frac * 100}%`}></i></div>
         <//>
         ${list}
-        <p class="small faint">Artikels die op zijn of onder het minimum zitten, blijven op de lijst tot ze aangevuld zijn. Wat je er zelf bijzette, haal je weg met het kruisje.</p>`}
+`}
     </main>
     <${Footer}>
       <${Button} icon="i_add" onClick=${() => setPicker(true)}>Ander artikel…<//>

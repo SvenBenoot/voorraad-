@@ -79,7 +79,7 @@ export function EditScreen({ id, code: presetCode, product }) {
     const trimmed = name.trim();
     const nErr = trimmed ? null : 'Geef een naam in.';
     const other = store.itemByCode(code);
-    const cErr = !code.trim() ? 'Een artikel heeft een code nodig. Tik op Nieuwe code.'
+    const cErr = !code.trim() ? 'Code is verplicht.'
       : other && other.id !== itemId ? `Deze code hoort al bij «${other.name}». Scan een andere code of maak een nieuwe.` : null;
     setNameError(nErr);
     setCodeError(cErr);
@@ -182,7 +182,7 @@ export function EditScreen({ id, code: presetCode, product }) {
         </div>
       </div>
       ${codeError ? html`<p class="small tone-text-red">${codeError}</p>`
-        : !original && html`<p class="small faint ed-hint">Zit er al een QR-label op het artikel? Scan het met de knop naast de code.</p>`}
+        : !original && html`<p class="small faint ed-hint">Heeft het artikel al een QR-label? Scan het met de knop naast de code.</p>`}
 
       ${original && html`<${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskDelete(true)}>Artikel verwijderen…<//>`}
     </main>
@@ -205,7 +205,7 @@ export function EditScreen({ id, code: presetCode, product }) {
 
     ${scanning && html`<div class="fullscreen scan-overlay">
       <${TopBar} title="Bestaande code scannen" onBack=${() => setScanning(false)} />
-      <p class="small faint pad">Richt de camera op de QR-code die al op het artikel zit.</p>
+      <p class="small faint pad">Scan de QR-code op het artikel.</p>
       <${Scanner} onCode=${(c) => {
         if (p.scanSound) beep();
         setCode(c.trim());
@@ -216,7 +216,7 @@ export function EditScreen({ id, code: presetCode, product }) {
     </div>`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
-      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); home(); }}
       onDismiss=${() => setAskDelete(false)} />`}
 

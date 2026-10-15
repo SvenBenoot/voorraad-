@@ -97,7 +97,6 @@ p { margin: 4px 0; }
 
 .tone-text-red { color: var(--red-fg); } .tone-text-orange { color: var(--orange-fg); }
 .tone-text-green { color: var(--green-fg); } .tone-text-blue { color: var(--blue-fg); } .tone-text-gray { color: var(--gray-fg); }
-.tone-bg-red { background: var(--red-bg); } .tone-bg-orange { background: var(--orange-bg); } .tone-bg-green { background: var(--green-bg); }
 .danger-text { color: var(--red-fg) !important; }
 
 /* ---- balken */
@@ -331,9 +330,19 @@ p { margin: 4px 0; }
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
 .icon-opt.on .icon-box { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
 
-.qd-head { display: flex; gap: 14px; align-items: center; }
-.after { display: flex; align-items: center; justify-content: space-between; border-radius: 10px; padding: 10px 14px; }
-.after b { font-size: 17px; }
+.qd-head { display: flex; gap: 12px; align-items: center; }
+.qd { gap: 18px; }
+.qd-title { flex: 1; min-width: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card-fill); border: 1px solid var(--card-edge); }
+.seg button { height: 40px; border: 0; border-radius: 9px; background: none; color: var(--sub); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.seg button.on { background: var(--accent-bg); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.qd-step { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.qd-num { width: 104px; height: 60px; border: 1px solid var(--line); border-radius: 12px; background: var(--card-fill); color: var(--text);
+  text-align: center; font: inherit; font-size: 30px; font-weight: 700; outline: none; }
+.qd-num:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.qd-after { text-align: center; color: var(--sub); font-size: 15px; }
+.qd-after b { font-size: 17px; }
+.card.form { display: flex; flex-direction: column; gap: 14px; }
 
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
   background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;

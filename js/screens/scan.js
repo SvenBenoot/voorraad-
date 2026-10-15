@@ -6,15 +6,15 @@ import { store, needsRestock } from '../store.js';
 import { findByBarcode } from '../catalog.js';
 import {
   useData, usePrefs, TopBar, IconButton, FilterChip, StatusBanner, Card, Button, StepButton, Dialog, DialogButtons,
-  ConfirmDialog, NumberField, ItemIcon, toast,
+  ConfirmDialog, ItemIcon, toast,
 } from '../ui.js';
 import { Scanner, beep } from '../scanner.js';
 import { go, back } from '../router.js';
 
 const MODES = [
-  { key: 'COUNT', label: 'Aantal', help: 'Scan een code en geef in hoeveel stuks je eraf neemt of erbij legt.' },
-  { key: 'SERIES', label: 'Reeks', help: 'Scan na elkaar alles wat je meeneemt of terugzet. Bewaar daarna alles in één keer.' },
-  { key: 'OPEN', label: 'Openen', help: 'Scan een code om het artikel te openen.' },
+  { key: 'COUNT', label: 'Aantal', help: 'Per scan het aantal ingeven.' },
+  { key: 'SERIES', label: 'Reeks', help: 'Alles na elkaar scannen, daarna bewaren.' },
+  { key: 'OPEN', label: 'Openen', help: 'Scan om het artikel te openen.' },
 ];
 
 let lastMode = 'COUNT';
@@ -129,7 +129,7 @@ export function ScanScreen() {
           text=${result.low ? `Nog ${result.quantity} over · bijvullen` : `Nog ${result.quantity} over`}
           trailing=${html`<${Button} kind="ghost" onClick=${() => { store.adjust(result.id, -result.delta); setResult(null); }}>Ongedaan maken<//>`} />`
       : html`<${StatusBanner} tone="gray" icon="i_qr" title="Klaar om te scannen"
-          text=${hasTorch ? 'Hou de code in het kader. Donker? Zet de zaklamp aan.' : 'Hou de code in het kader, op een handbreedte van de camera.'} />`}
+          text=${hasTorch ? 'Hou de code in het kader.' : 'Hou de code in het kader.'} />`}
     </div>
 
     ${found && html`<${QuantityDialog} id=${found}
@@ -146,8 +146,8 @@ export function ScanScreen() {
       onDismiss=${() => setFound(null)} />`}
 
     ${unknown && html`<${ConfirmDialog} icon="i_qr" title=${product ? 'Nog niet in je voorraad' : 'Onbekende code'}
-      text=${product ? `${[product.brand, product.name].filter(Boolean).join(' ')}${product.description ? ' · ' + product.description : ''} staat in de productlijst maar nog niet in je voorraad. Wil je het toevoegen?`
-        : `«${unknown}» hoort nog bij geen enkel artikel. Wil je er een nieuw artikel van maken?`}
+      text=${product ? `${[product.brand, product.name].filter(Boolean).join(' ')}${product.description ? ' · ' + product.description : ''} staat nog niet in je voorraad.`
+        : `«${unknown}» hoort bij geen artikel.`}
       confirmLabel=${product ? "Toevoegen…" : "Nieuw artikel…"} onConfirm=${() => { const c = unknown; setUnknown(null); go('/nieuw/' + encodeURIComponent(c)); }}
       onDismiss=${() => setUnknown(null)} />`}
   </div>`;
@@ -164,22 +164,28 @@ function QuantityDialog({ id, onSave, onOpen, onDismiss }) {
   const after = Math.max(0, item.quantity + delta);
   const tone = after === 0 ? 'red' : item.minimum > 0 && after < item.minimum ? 'orange' : 'green';
   return html`<${Dialog} onDismiss=${onDismiss}>
-    <div class="dialog-body">
+    <div class="dialog-body qd">
       <div class="qd-head">
-        <${ItemIcon} icon=${item.icon} size=${56} />
-        <div>
-          <div class="window-title clamp2">${item.name}</div>
-          <div class="sub">Nu ${item.quantity} stuks${item.location ? ' · ' + item.location : ''}</div>
+        <${ItemIcon} icon=${item.icon} size=${48} />
+        <div class="qd-title">
+          <div class="card-title clamp2">${item.name}</div>
+          <div class="small faint">${[item.brand, item.location].filter(Boolean).join(' · ') || 'Op voorraad: ' + item.quantity}</div>
         </div>
+        <${IconButton} icon="i_open" label="Artikel openen" onClick=${onOpen} />
       </div>
-      <div class="chip-row tight">
-        <${FilterChip} selected=${take} onClick=${() => setTake(true)}>Eraf<//>
-        <${FilterChip} selected=${!take} onClick=${() => setTake(false)}>Erbij<//>
+      <div class="seg" role="group">
+        <button type="button" class=${take ? 'on' : ''} aria-pressed=${take} onClick=${() => setTake(true)}>Eraf</button>
+        <button type="button" class=${!take ? 'on' : ''} aria-pressed=${!take} onClick=${() => setTake(false)}>Erbij</button>
       </div>
-      <${NumberField} label=${take ? 'Hoeveel neem je eraf?' : 'Hoeveel leg je erbij?'} value=${amount} min=${1} onChange=${setAmount} />
-      <div class=${'after tone-bg-' + tone}><span>Daarna</span><b class=${'tone-text-' + tone}>${after} stuks</b></div>
-      ${take && amount > item.quantity && html`<p class="small tone-text-orange">Er zijn er maar ${item.quantity}. Het aantal gaat niet onder nul.</p>`}
-      <${Button} kind="ghost" icon="i_open" onClick=${onOpen}>Artikel openen<//>
+      <div class="qd-step">
+        <${StepButton} add=${false} size=${52} disabled=${amount <= 1} onClick=${() => setAmount(Math.max(1, amount - 1))} />
+        <input class="qd-num" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" aria-label="Aantal"
+          value=${String(amount)} onFocus=${(e) => e.currentTarget.select()}
+          onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+          onInput=${(e) => setAmount(Math.max(1, parseInt(e.currentTarget.value.replace(/\D/g, '').slice(0, 6) || '1', 10)))} />
+        <${StepButton} add=${true} size=${52} onClick=${() => setAmount(amount + 1)} />
+      </div>
+      <div class="qd-after">Voorraad ${item.quantity} → <b class=${'tone-text-' + tone}>${after}</b></div>
     </div>
     <${DialogButtons}>
       <${Button} onClick=${onDismiss}>Annuleren<//>

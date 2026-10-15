@@ -18,7 +18,7 @@ function syncInfo(s) {
   if (s.state === 'busy') return { tone: 'blue', icon: 'i_cloud_sync', title: 'Bezig met verbinden…', text: '' };
   if (!s.online) {
     return { tone: 'orange', icon: 'i_cloud_off', title: 'Geen internet',
-      text: 'Je wijzigingen staan op dit toestel en gaan online zodra er verbinding is.' };
+      text: 'Wijzigingen worden bewaard zodra je weer online bent.' };
   }
   if (s.pending) return { tone: 'orange', icon: 'i_cloud_sync', title: 'Bezig met online bewaren…', text: '' };
   return { tone: 'green', icon: 'i_cloud_done', title: 'Alles online bewaard', text: '' };
@@ -56,10 +56,10 @@ export function LoginScreen() {
       <div class="empty login-head">
         <div class="empty-icon"><${Icon} name="i_cloud_done" size=${32} /></div>
         <div class="empty-title">Inloggen</div>
-        <div class="empty-text">Je voorraad wordt online bewaard. Zo is ze altijd veilig en zie je op elk toestel dezelfde voorraad.</div>
+        <div class="empty-text">Log in om je voorraad te bekijken.</div>
       </div>
-      <${Card}>
-        ${s.error && html`<${StatusBanner} tone="orange" icon="i_error" title="Lukte niet" text=${s.error} />`}
+      <${Card} cls="form">
+        ${s.error && html`<${StatusBanner} tone="orange" icon="i_error" title="Inloggen mislukt" text=${s.error} />`}
         <${TextField} label="E-mailadres" type="email" autocomplete="username" value=${email} onInput=${setEmail} hint="naam@gmail.com" />
         <${TextField} label="Wachtwoord" type="password" autocomplete="current-password" value=${password} onInput=${setPassword} />
         <${Button} kind="primary" icon="i_cloud_done" cls="wide" disabled=${busy || !ready} onClick=${go}>${busy ? 'Bezig…' : 'Inloggen'}<//>
@@ -102,10 +102,10 @@ export function CloudCard() {
   const info = syncInfo(s);
   return html`<${Card}>
     <${StatusBanner} tone=${info.tone} icon=${info.icon} title=${info.title} text=${info.text} />
-    <p class="sub">Ingelogd als <b>${p.cloudUser}</b>. Wat je wijzigt, gaat ook naar je online database.</p>
+    <p class="sub">Ingelogd als <b>${p.cloudUser}</b></p>
     <${Button} icon="i_logout" onClick=${() => setAskOut(true)}>Uitloggen<//>
     ${askOut && html`<${ConfirmDialog} icon="i_logout" title="Uitloggen?"
-      text="Daarna moet je opnieuw inloggen om de app te gebruiken. Je gegevens blijven online staan."
+      text="Je gegevens blijven online bewaard."
       confirmLabel="Uitloggen" onConfirm=${() => { setAskOut(false); cloud.signOut(); }}
       onDismiss=${() => setAskOut(false)} />`}
   <//>`;

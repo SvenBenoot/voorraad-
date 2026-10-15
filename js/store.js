@@ -158,7 +158,7 @@ export const store = {
       await backend.saveData(data);
     } catch (e) {
       // Bv. geheugen vol: zeggen, anders denk je dat alles bewaard is.
-      window.dispatchEvent(new CustomEvent('voorraad-fout', { detail: 'Bewaren lukte niet. Is het geheugen van je iPhone vol? Maak plaats en probeer opnieuw.' }));
+      window.dispatchEvent(new CustomEvent('voorraad-fout', { detail: 'Bewaren lukte niet. Is de opslag vol?' }));
       throw e;
     }
   },
