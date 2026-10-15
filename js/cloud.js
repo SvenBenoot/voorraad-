@@ -6,7 +6,7 @@
 // Indeling online (één document mag max. 1 MB zijn, daarom niet alles in één stuk):
 //   voorraad/data                  categorieën, merken, magazijnlijst
 //   voorraad/data/items/{id}       één document per artikel
-//   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel)
+//   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel, at = servertijd)
 // Wie erin mag, staat in de Firestore-regels (enkel Svens e-mailadres).
 import { store, normalize, prefs, setSyncer, OTHER, MAX_MOVEMENTS } from './store.js';
 
@@ -88,7 +88,9 @@ function push(prev, next) {
   const ops = [];
   if (!same(a.meta, b.meta)) ops.push((batch) => batch.set(meta, b.meta));
   for (const [coll, x, y] of [[items, a.items, b.items], [movements, a.movements, b.movements]]) {
-    for (const [id, v] of y) if (!x.has(id) || !same(x.get(id), v)) ops.push((batch) => batch.set(F.doc(coll, id), v));
+    // Logboekregels krijgen de servertijd mee, zodat een ander toestel enkel de nieuwe hoeft op te halen.
+    const stamp = coll === movements ? (v) => ({ ...v, at: F.serverTimestamp() }) : (v) => v;
+    for (const [id, v] of y) if (!x.has(id) || !same(x.get(id), v)) ops.push((batch) => batch.set(F.doc(coll, id), stamp(v)));
     for (const id of x.keys()) if (!y.has(id)) ops.push((batch) => batch.delete(F.doc(coll, id)));
   }
   // Max. 500 schrijfacties per keer.
@@ -114,7 +116,9 @@ function sortMoves(list) { return list.sort((x, y) => x.time - y.time).slice(-MA
 function listen() {
   const { F, meta, items, movements } = fb;
   const opts = { includeMetadataChanges: true };
-  const synced = { items: false, movements: false };
+  // Enkel bij artikels: het logboek wordt maar gedeeltelijk opgehaald (zie hieronder).
+  const synced = { items: false, movements: true };
+  let seen = prefs.value.syncAt || 0;
   const track = (key, snap) => {
     pending[key] = snap.metadata.hasPendingWrites;
     setStatus({ pending: Object.values(pending).some(Boolean) });
@@ -139,9 +143,11 @@ function listen() {
       for (const c of changes) {
         if (c.type === 'removed') { changed = byId.delete(c.doc.id) || changed; continue; }
         if (c.doc.metadata.hasPendingWrites) continue;
-        const v = c.doc.data();
+        const { at, ...v } = c.doc.data();
+        if (at) seen = Math.max(seen, at.toMillis());
         if (!same(byId.get(c.doc.id), v)) { byId.set(c.doc.id, v); changed = true; }
       }
+      if (key === 'movements' && seen > (prefs.value.syncAt || 0)) prefs.set({ syncAt: seen });
       if (!changed) return null;
       const fresh = normalize({ ...d, [key]: [...byId.values()] });
       if (key === 'items') d.items = fresh.items;
@@ -162,7 +168,10 @@ function listen() {
       });
     }, fail),
     F.onSnapshot(items, opts, onColl('items'), fail),
-    F.onSnapshot(movements, opts, onColl('movements'), fail),
+    // Het logboek kan tot 3000 regels hebben. Elke keer alles inlezen kost veel reads, dus enkel wat er
+    // sinds de vorige keer bijkwam (een minuut marge voor regels die net gelijktijdig binnenkwamen).
+    F.onSnapshot(F.query(movements, F.where('at', '>', F.Timestamp.fromMillis(Math.max(0, seen - 60000)))),
+      opts, onColl('movements'), fail),
   ];
   // Wat je wijzigde terwijl Firebase nog aan het laden was, nu alsnog versturen.
   if (waitingSince) push(waitingSince, store.data);
@@ -274,7 +283,7 @@ export const cloud = {
         await A.signOut(auth).catch(() => {});
         throw e;
       }
-      prefs.set({ cloudUser: cred.user.email });
+      prefs.set({ cloudUser: cred.user.email, syncAt: Date.now() - 3600000 });
       setStatus({ email: cred.user.email });
       listen();
       return true;
@@ -289,7 +298,7 @@ export const cloud = {
   async signOut() {
     stop();
     waitingSince = null;
-    prefs.set({ cloudUser: '' });
+    prefs.set({ cloudUser: '', syncAt: 0 });
     setStatus({ state: 'off', pending: false, error: '' });
     try { await fb?.A.signOut(fb.auth); } catch { /* niet erg */ }
   },
