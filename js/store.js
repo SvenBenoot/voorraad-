@@ -3,7 +3,7 @@
 // Waar ze bewaard worden, regelt storage.js.
 import { localStore } from './storage.js';
 
-// De opslag die de app gebruikt. Een online database krijgt dezelfde functies en komt dan hier.
+// De opslag op het toestel. Ben je ingelogd voor online opslaan, dan stuurt cloud.js elke wijziging ook door.
 const backend = localStore;
 
 export const OTHER = 'OTHER';
@@ -40,7 +40,7 @@ export const DEFAULT_CATEGORIES = [
   { id: OTHER, name: 'Andere', icon: 'other' },
 ];
 
-const MAX_MOVEMENTS = 3000;
+export const MAX_MOVEMENTS = 3000;
 
 export const SORT_MODES = [
   { key: 'NAME', label: 'Naam', icon: 'i_sort_alpha' },
@@ -130,6 +130,9 @@ export function normalize(raw) {
 
 let data = normalize(null);
 const listeners = new Set();
+// Krijgt (vorige, nieuwe) gegevens bij elke eigen wijziging; zet cloud.js als je online bewaart.
+let onSaved = null;
+export function setSyncer(fn) { onSaved = fn; }
 
 export const store = {
   get data() { return data; },
@@ -147,8 +150,10 @@ export const store = {
   async update(fn) {
     const next = fn(structuredClone(data));
     if (!next || next === data) return;
+    const prev = data;
     data = next;
     emit();
+    onSaved?.(prev, next);
     try {
       await backend.saveData(data);
     } catch (e) {
@@ -326,10 +331,20 @@ export const store = {
 
   /** Vervangt alles door een reservekopie. */
   async replaceAll(raw) {
-    const next = normalize(raw);
+    const prev = data;
+    data = normalize(raw);
+    emit();
+    onSaved?.(prev, data);
+    await backend.saveData(data);
+  },
+
+  /** Wijziging die van de online database komt: tonen en op het toestel bewaren, maar niet terugsturen. */
+  applyRemote(fn) {
+    const next = fn(structuredClone(data));
+    if (!next) return;
     data = next;
     emit();
-    await backend.saveData(data);
+    backend.saveData(data).catch(() => {});
   },
 };
 
@@ -354,7 +369,7 @@ function emit() { for (const fn of listeners) fn(data); }
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, backupReminder: true, scanSound: true };
+const settingDefaults = { cloudUser: '', theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, backupReminder: true, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

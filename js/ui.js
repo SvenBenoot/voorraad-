@@ -151,14 +151,14 @@ export function SearchField({ value, onInput, hint = 'Zoeken' }) {
   </label>`;
 }
 
-export function TextField({ label, value, onInput, hint, help, error, multiline, mono, autoFocus }) {
+export function TextField({ label, value, onInput, hint, help, error, multiline, mono, autoFocus, type = 'text', autocomplete }) {
   const props = {
-    value, placeholder: hint, class: (error ? 'err ' : '') + (mono ? 'mono' : ''),
+    value, placeholder: hint, class: (error ? 'err ' : '') + (mono ? 'mono' : ''), autocomplete,
     onInput: (e) => onInput(e.currentTarget.value), autoFocus,
   };
   return html`<label class="field">
     <span class="field-label">${label}</span>
-    ${multiline ? html`<textarea rows="3" ...${props}></textarea>` : html`<input type="text" enterkeyhint="done"
+    ${multiline ? html`<textarea rows="3" ...${props}></textarea>` : html`<input type=${type} enterkeyhint="done"
       onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} ...${props} />`}
     ${error ? html`<span class="field-help tone-text-red">${error}</span>` : help && html`<span class="field-help">${help}</span>`}
   </label>`;
