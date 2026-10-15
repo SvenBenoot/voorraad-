@@ -44,9 +44,9 @@ export function StepButton({ add, onClick, disabled, size = 44, label }) {
 
 // ---- balken
 
-export function BrandBar({ title, children }) {
+export function BrandBar({ title, children, many }) {
   return html`<header class="bar">
-    <div class="bar-row">
+    <div class=${'bar-row' + (many ? ' many' : '')}>
       <span class="logo">
         <img class="logo-light" src="img/logo_zwart.png" alt="Van Gils" />
         <img class="logo-dark" src="img/logo_wit.png" alt="Van Gils" />

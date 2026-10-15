@@ -315,7 +315,7 @@ p { margin: 4px 0; }
 .dialog-buttons > .btn { flex: 1; }
 .confirm { display: flex; gap: 14px; padding: 20px; }
 .confirm-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; color: var(--on-bd); }
-.confirm-icon.tone-red { background: var(--red-bd); } .confirm-icon.tone-orange { background: var(--orange-bd); } .confirm-icon.tone-blue { background: var(--blue-bd); }
+.confirm-icon.tone-red { background: var(--red-bd); } .confirm-icon.tone-orange { background: var(--orange-bd); } .confirm-icon.tone-blue { background: var(--blue-bd); } .confirm-icon.tone-green { background: var(--green-bd); }
 .confirm-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .confirm-body .field { margin-top: 10px; }
 .confirm-text { color: var(--sub); }
@@ -387,6 +387,12 @@ p { margin: 4px 0; }
 .day-label { flex: 1; text-align: center; font-weight: 600; font-size: 17px; }
 .day-nav .icon-btn:disabled { opacity: .3; }
 .icon-btn.flip .icon { transform: scaleX(-1); }
+/* Sync-icoon op het startscherm: kleur = toestand */
+.icon-btn.sync-green { color: var(--green-bd); } .icon-btn.sync-orange { color: var(--orange-bd); }
+.icon-btn.sync-red { color: var(--red-bd); } .icon-btn.sync-blue { color: var(--faint); }
+/* Startscherm met sync-icoon: te weinig plaats voor "Voorraad" naast het logo op een gsm */
+@media (max-width: 430px) { .bar-row.many .bar-sep, .bar-row.many .bar-title.sub { display: none; } .bar-row.many .bar-actions { margin-left: auto; } }
+.login-head { padding: 24px 16px 8px; }
 .usage-row { display: flex; align-items: center; gap: 10px; }
 
 /* ---- artikelformulier: foto en naam bovenaan, daarna gegroepeerde rijen zoals in iOS-instellingen */

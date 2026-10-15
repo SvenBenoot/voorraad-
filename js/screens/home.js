@@ -8,8 +8,7 @@ import {
   ItemCard, SwipeRow, ConfirmDialog, SectionHeader, plural, Dialog, DialogButtons,
 } from '../ui.js';
 import { go } from '../router.js';
-import { BackupDialog, backupDue } from './settings.js';
-import { fmtDate } from '../ui.js';
+import { SyncButton, SyncDialog } from '../cloud-card.js';
 
 export function HomeScreen() {
   const data = useData();
@@ -21,7 +20,7 @@ export function HomeScreen() {
   const [brandMenu, setBrandMenu] = useState(false);
   const [askEdit, setAskEdit] = useState(null);
   const [askDelete, setAskDelete] = useState(null);
-  const [backup, setBackup] = useState(false);
+  const [syncInfo, setSyncInfo] = useState(false);
 
   const sort = SORT_MODES.find((m) => m.key === p.sort) ?? SORT_MODES[0];
   const activeFilter = filter === 'all' || filter === 'restock' || data.categories.some((c) => c.id === filter) ? filter : 'all';
@@ -68,7 +67,8 @@ export function HomeScreen() {
   });
 
   return html`<div class="screen">
-    <${BrandBar} title="Voorraad">
+    <${BrandBar} title="Voorraad" many>
+      <${SyncButton} onClick=${() => setSyncInfo(true)} />
       <${IconButton} icon="i_add" label="Artikel toevoegen" size=${28} onClick=${() => go('/nieuw')} />
       <${IconButton} icon="i_checklist" label="Aanvullen" onClick=${() => go('/aanvullen')} />
       <${IconButton} icon="i_history" label="Verbruik per dag" onClick=${() => go('/verbruik')} />
@@ -109,10 +109,6 @@ export function HomeScreen() {
         text="Op of onder de minimumvoorraad. Tik om je aanvullijst voor het magazijn te openen."
         onClick=${() => go('/aanvullen')} />`}
 
-      ${backupDue(p, data) && html`<${StatusBanner} tone="blue" icon="i_backup" title="Tijd voor een reservekopie"
-        text=${(p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup, false) + '. ' : '') + 'Tik om alles in iCloud Drive te bewaren.'}
-        onClick=${() => setBackup(true)} />`}
-
       ${data.items.length === 0 ? html`<${EmptyState} title="Nog geen artikels"
           text="Tik bovenaan op + om je eerste kabel, fiche of toestel in te geven. Je krijgt er meteen een QR-code bij." />`
         : shown.length === 0 ? html`<p class="sub nothing">Niets gevonden. Probeer een ander woord, of kies bovenaan Alles en Alle merken.</p>` : null}
@@ -140,7 +136,7 @@ export function HomeScreen() {
       </div>
       <${DialogButtons}><${Button} onClick=${() => setBrandMenu(false)}>Annuleren<//><//>
     <//>`}
-    ${backup && html`<${BackupDialog} onDismiss=${() => setBackup(false)} />`}
+    ${syncInfo && html`<${SyncDialog} onDismiss=${() => setSyncInfo(false)} />`}
     ${askEdit && html`<${ConfirmDialog} icon="i_edit" title=${askEdit.name + ' wijzigen?'}
       text="Je opent het formulier om naam, merk, icoon, categorie, aantal of plaats aan te passen."
       confirmLabel="Wijzigen" onConfirm=${() => { const id = askEdit.id; setAskEdit(null); go('/wijzigen/' + id); }}
