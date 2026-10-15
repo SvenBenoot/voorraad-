@@ -2,6 +2,7 @@
 // Laadt de gegevens, kiest het thema en toont het scherm dat bij het adres hoort.
 import { html, render, useEffect } from '../lib/preact-htm.js';
 import { store, prefs } from './store.js';
+import { cloud } from './cloud.js';
 import { usePrefs, ToastHost } from './ui.js';
 import { useRoute } from './router.js';
 import { unlockAudio } from './scanner.js';
@@ -62,6 +63,8 @@ document.addEventListener('pointerdown', (e) => {
     return;
   }
   render(html`<${App} />`, document.getElementById('app'));
+  // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
+  cloud.start();
 })();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
