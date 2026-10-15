@@ -178,9 +178,8 @@ export function SettingsScreen() {
 
       <${SectionHeader}>Over deze app<//>
       <${Card}>
-        <div class="card-title">Voorraad · Van Gils</div>
+        <div class="card-title">Voorraad</div>
         <div class="sub">Versie ${VERSION} · web-app</div>
-        <p class="small faint">Gemaakt door Sven Benoot · Van Gils, Beernem · vangils.pro</p>
       <//>
     </main>
 

@@ -1,4 +1,4 @@
-/* ---- Van Gils-huisstijl (uit UniFi Inform), futuristische versie zoals de Android-app 1.5
+/* ---- Huisstijl, futuristische versie zoals de Android-app 1.5
    Alle kleuren staan hier centraal; schermen gebruiken enkel deze variabelen. */
 
 :root {
@@ -109,12 +109,8 @@ p { margin: 4px 0; }
 }
 .bar-row { height: 60px; display: flex; align-items: center; padding: 0 4px 0 var(--pad); gap: 0; }
 .bar-row-back { padding-left: 4px; }
-.logo { height: 22px; }
-.logo img { height: 22px; width: auto; }
-.logo-dark { display: none; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-dark { display: block; } :root:not([data-theme="light"]) .logo-light { display: none; } }
-:root[data-theme="dark"] .logo-dark { display: block; }
-:root[data-theme="dark"] .logo-light { display: none; }
+.logo { height: 32px; display: flex; }
+.logo img { height: 32px; width: auto; }
 .bar-sep { width: 1px; height: 22px; background: var(--line); margin: 0 12px; }
 .bar-title { flex: 1; font-size: 18px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-title.sub { color: var(--sub); font-size: 18px; }

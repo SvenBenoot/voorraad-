@@ -1,7 +1,7 @@
 // ---- Offline werken
 // Alle bestanden van de app worden bij de eerste keer bewaard, zodat de app ook zonder internet opent
 // (in de bestelwagen, in een kelder…). Nieuwe versie = CACHE-naam ophogen (zelfde als js/version.js).
-const CACHE = 'voorraad-1.15.1';
+const CACHE = 'voorraad-1.16';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/files.js', 'js/icons.js', 'js/material.js', 'js/qr.js', 'js/router.js',
@@ -9,7 +9,7 @@ const FILES = [
   'js/screens/catalog.js', 'js/screens/edit.js', 'js/screens/home.js', 'js/screens/item.js', 'js/screens/restock.js', 'js/screens/scan.js', 'js/screens/settings.js', 'js/screens/trash.js', 'js/screens/usage.js',
   'lib/fflate.js', 'lib/jsQR.js', 'lib/preact-htm.js', 'lib/qrcode.mjs', 'lib/zxing.min.js',
   'lib/firebase/firebase-app.js', 'lib/firebase/firebase-auth.js', 'lib/firebase/firebase-firestore.js',
-  'img/logo_wit.png', 'img/logo_zwart.png', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png',
+  'img/logo-doos.svg', 'img/icon-192.png', 'img/icon-512.png', 'img/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (e) => {

@@ -1,7 +1,7 @@
 {
-  "name": "Voorraad · Van Gils",
+  "name": "Voorraad",
   "short_name": "Voorraad",
-  "description": "Voorraad in de bestelwagen bijhouden met QR-codes.",
+  "description": "Voorraad bijhouden met QR-codes.",
   "lang": "nl-BE",
   "start_url": "./",
   "scope": "./",

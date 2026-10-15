@@ -44,8 +44,7 @@ export function LoginScreen() {
     <header class="bar">
       <div class="bar-row">
         <span class="logo">
-          <img class="logo-light" src="img/logo_zwart.png" alt="Van Gils" />
-          <img class="logo-dark" src="img/logo_wit.png" alt="Van Gils" />
+          <img src="img/logo-doos.svg" alt="" />
         </span>
         <span class="bar-sep"></span>
         <span class="bar-title sub">Voorraad</span>

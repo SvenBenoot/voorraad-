@@ -196,7 +196,7 @@ export const store = {
     return data.trash.find((i) => i.code.toLowerCase() === c);
   },
 
-  /** Nieuwe, korte code voor een QR-label, bv. "VG-K7M2QX". Zonder tekens die op elkaar lijken (0/O, 1/I). */
+  /** Nieuwe, korte code voor een QR-label, bv. "VR-K7M2QX". Zonder tekens die op elkaar lijken (0/O, 1/I). */
   newCode() { return freshCode(data); },
 
   // ---- artikels
@@ -433,7 +433,7 @@ function freshCode(d) {
   const taken = new Set([...d.items, ...d.trash].map((i) => i.code.toLowerCase()));
   for (;;) {
     const bytes = crypto.getRandomValues(new Uint8Array(6));
-    const code = 'VG-' + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+    const code = 'VR-' + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
     if (!taken.has(code.toLowerCase())) return code;
   }
 }
