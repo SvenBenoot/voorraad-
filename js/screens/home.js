@@ -2,8 +2,8 @@
 // Zoeken, filteren op categorie of "Bijvullen" en op merk, sorteren, en vegen om te wijzigen of te verwijderen.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { store, prefs, collator, categoryOf, needsRestock, SORT_MODES } from '../store.js';
-import {
+import { prefs, collator, categoryOf, needsRestock, SORT_MODES } from '../store.js';
+import { trashItem,
   useData, usePrefs, BrandBar, IconButton, Footer, Button, SearchField, FilterChip, StatusBanner, EmptyState,
   ItemCard, SwipeRow, ConfirmDialog, SectionHeader, plural, Dialog, DialogButtons,
 } from '../ui.js';
@@ -141,8 +141,8 @@ export function HomeScreen() {
       confirmLabel="Wijzigen" onConfirm=${() => { const id = askEdit.id; setAskEdit(null); go('/wijzigen/' + id); }}
       onDismiss=${() => setAskEdit(null)} />`}
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${askDelete.name + ' verwijderen?'}
-      text="Dit kan niet ongedaan gemaakt worden."
-      confirmLabel="Verwijderen" onConfirm=${() => { store.delete(askDelete.id); setAskDelete(null); }}
+      text="Je vindt het 30 dagen terug in de prullenmand."
+      confirmLabel="Verwijderen" onConfirm=${() => { trashItem(askDelete); setAskDelete(null); }}
       onDismiss=${() => setAskDelete(null)} />`}
   </div>`;
 }

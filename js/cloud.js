@@ -5,7 +5,8 @@
 //
 // Indeling online (één document mag max. 1 MB zijn, daarom niet alles in één stuk):
 //   voorraad/data                  categorieën, merken, magazijnlijst
-//   voorraad/data/items/{id}       één document per artikel
+//   voorraad/data/items/{id}       één document per artikel (deletedAt = tijd van verwijderen: dan zit het in de prullenmand,
+//                                  at = servertijd van de laatste wijziging)
 //   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel, at = servertijd)
 // Wie erin mag, staat in de Firestore-regels (enkel Svens e-mailadres).
 import { store, normalize, prefs, setSyncer, OTHER, MAX_MOVEMENTS } from './store.js';
@@ -93,7 +94,7 @@ function docsOf(d) {
   if (!d) return { meta: null, items: new Map(), movements: new Map() };
   let docs = docsCache.get(d);
   if (!docs) {
-    docs = { meta: metaOf(d), items: new Map(d.items.map((i) => [docId(i.id), i])), movements: movesById(d.movements) };
+    docs = { meta: metaOf(d), items: new Map([...d.items, ...d.trash].map((i) => [docId(i.id), i])), movements: movesById(d.movements) };
     docsCache.set(d, docs);
   }
   return docs;
@@ -139,7 +140,10 @@ function send(prev, next) {
   if (!same(a.meta, b.meta)) ops.push((batch) => batch.set(meta, b.meta));
   for (const [coll, x, y] of [[items, a.items, b.items], [movements, a.movements, b.movements]]) {
     // Logboekregels krijgen de servertijd mee, zodat een ander toestel enkel de nieuwe hoeft op te halen.
-    const stamp = coll === movements ? (v) => ({ ...v, at: F.serverTimestamp() }) : (v) => v;
+    // Elke regel krijgt de servertijd (at) mee; artikels ook een deletedAt (leeg als ze niet verwijderd zijn),
+    // zodat terugzetten het veld ook online wist.
+    const stamp = coll === movements ? (v) => ({ ...v, at: F.serverTimestamp() })
+      : (v) => ({ ...v, deletedAt: v.deletedAt ?? null, at: F.serverTimestamp() });
     // merge: wijzigden twee toestellen een ander veld van hetzelfde artikel, dan blijven beide wijzigingen.
     for (const [id, v] of y) if (!x.has(id) || !same(x.get(id), v)) ops.push((batch) => batch.set(F.doc(coll, id), stamp(v), { merge: true }));
     for (const id of x.keys()) if (!y.has(id)) ops.push((batch) => batch.delete(F.doc(coll, id)));
@@ -168,9 +172,15 @@ function listen() {
   stop();
   const { F, meta, items, movements } = fb;
   const opts = { includeMetadataChanges: true };
-  // Enkel bij artikels: het logboek wordt maar gedeeltelijk opgehaald (zie hieronder).
-  const synced = { items: false, movements: true };
+  // Lezen kost per document. Daarom haalt de app artikels en logboek normaal enkel op wat sinds de vorige keer
+  // wijzigde (op servertijd). Eén keer per dag, of als er nog geen startpunt is, leest ze alles volledig in: dan
+  // merkt ze ook wat elders definitief verdween, en krijgen oudere documenten hun servertijd.
+  const DAY = 24 * 3600 * 1000;
+  const fullItems = !prefs.value.itemsAt || Date.now() - (prefs.value.itemsFullAt || 0) > DAY;
+  const synced = { items: !fullItems, movements: true };
   let seen = prefs.value.syncAt || 0;
+  let seenItems = prefs.value.itemsAt || 0;
+  const since = (t) => F.Timestamp.fromMillis(Math.max(0, t - 60000)); // een minuut marge
   const track = (key, snap) => {
     pending[key] = snap.metadata.hasPendingWrites;
     setStatus({ pending: Object.values(pending).some(Boolean) });
@@ -181,12 +191,22 @@ function listen() {
     track(key, snap);
     // Eerste keer rechtstreeks van de server: alles gelijk zetten (ook wat intussen elders verwijderd is).
     const full = !synced[key] && !snap.metadata.fromCache;
-    if (full) synced[key] = true;
+    if (full) {
+      synced[key] = true;
+      prefs.set({ itemsFullAt: Date.now() });
+      // Artikels van vóór deze versie hebben nog geen servertijd: die nu geven (enkel dat veld).
+      const old = snap.docs.filter((s) => !s.metadata.hasPendingWrites && s.data().at == null);
+      for (let i = 0; i < old.length; i += 200) {
+        const batch = F.writeBatch(fb.db);
+        for (const s of old.slice(i, i + 200)) batch.set(F.doc(items, s.id), { at: F.serverTimestamp() }, { merge: true });
+        batch.commit().catch(lost);
+      }
+    }
     const changes = snap.docChanges(opts);
     // Echo van je eigen, nog niet bevestigde wijziging: staat al goed in de app, dus niets te doen.
     if (!full && !changes.some((c) => c.type === 'removed' || !c.doc.metadata.hasPendingWrites)) return;
     store.applyRemote((d) => {
-      const list = key === 'items' ? d.items : d.movements;
+      const list = key === 'items' ? [...d.items, ...d.trash] : d.movements;
       const ids = key === 'items' ? list.map((i) => docId(i.id)) : [...movesById(list).keys()];
       const byId = new Map(list.map((x, i) => [ids[i], x]));
       let changed = false;
@@ -198,23 +218,28 @@ function listen() {
       }
       gone = gone.filter((id) => byId.has(id));
       // Verdwijnt ineens de helft van je artikels online (bv. per ongeluk gewist in de console), dan volgt de app
-      // dat niet: ze zet de artikels terug online.
-      if (key === 'items' && gone.length > 3 && gone.length > byId.size / 2) {
-        for (const id of gone) restore.push([id, byId.get(id)]);
-      } else {
-        for (const id of gone) { byId.delete(id); changed = true; }
+      // dat niet: ze zet de artikels terug online. Alleen artikels tellen mee; de prullenmand ruimt zichzelf op.
+      const live = gone.filter((id) => !byId.get(id).deletedAt);
+      const liveTotal = [...byId.values()].filter((i) => !i.deletedAt).length;
+      if (key === 'items' && live.length > 3 && live.length > liveTotal / 2) {
+        for (const id of live) restore.push([id, byId.get(id)]);
+        gone = gone.filter((id) => !live.includes(id));
       }
+      for (const id of gone) { byId.delete(id); changed = true; }
       for (const c of changes) {
         if (c.type === 'removed') continue;
         if (c.doc.metadata.hasPendingWrites) continue;
         const { at, ...v } = c.doc.data();
-        if (at) seen = Math.max(seen, at.toMillis());
+        if (at && key === 'movements') seen = Math.max(seen, at.toMillis());
+        if (at && key === 'items') seenItems = Math.max(seenItems, at.toMillis());
+        if (v.deletedAt == null) delete v.deletedAt;
         if (!same(byId.get(c.doc.id), v)) { byId.set(c.doc.id, v); changed = true; }
       }
       if (key === 'movements' && seen > (prefs.value.syncAt || 0)) prefs.set({ syncAt: seen });
+      if (key === 'items' && seenItems > (prefs.value.itemsAt || 0)) prefs.set({ itemsAt: seenItems });
       if (!changed) return null;
-      const fresh = normalize({ ...d, [key]: [...byId.values()] });
-      if (key === 'items') d.items = fresh.items;
+      const fresh = normalize({ ...d, items: key === 'items' ? [...byId.values()] : d.items, trash: key === 'items' ? [] : d.trash, movements: key === 'movements' ? [...byId.values()] : d.movements });
+      if (key === 'items') { d.items = fresh.items; d.trash = fresh.trash; }
       else d.movements = sortMoves(fresh.movements);
       return d;
     });
@@ -241,11 +266,10 @@ function listen() {
         return { ...d, categories: n.categories, brands: n.brands, hiddenBrands: n.hiddenBrands, pickList: n.pickList };
       });
     }, fail),
-    F.onSnapshot(items, opts, onColl('items'), fail),
+    F.onSnapshot(fullItems ? items : F.query(items, F.where('at', '>', since(seenItems))), opts, onColl('items'), fail),
     // Het logboek kan tot 3000 regels hebben. Elke keer alles inlezen kost veel reads, dus enkel wat er
     // sinds de vorige keer bijkwam (een minuut marge voor regels die net gelijktijdig binnenkwamen).
-    F.onSnapshot(F.query(movements, F.where('at', '>', F.Timestamp.fromMillis(Math.max(0, seen - 60000)))),
-      opts, onColl('movements'), fail),
+    F.onSnapshot(F.query(movements, F.where('at', '>', since(seen))), opts, onColl('movements'), fail),
   ];
   setSyncer(push);
   setStatus({ state: 'on', error: '' });
@@ -262,11 +286,12 @@ function stop() {
 /** Alles van online, plus wat enkel op dit toestel staat (zo gaat er bij de eerste keer niets verloren). */
 function merge(remote, local) {
   const r = normalize(remote);
-  // Staat een artikel op beide plaatsen, dan wint de laatst gewijzigde.
-  const localById = new Map(local.items.map((i) => [i.id, i]));
-  r.items = r.items.map((i) => (localById.get(i.id)?.updatedAt > i.updatedAt ? localById.get(i.id) : i));
-  const itemIds = new Set(r.items.map((i) => i.id));
-  r.items.push(...local.items.filter((i) => !itemIds.has(i.id)));
+  // Staat een artikel op beide plaatsen, dan wint de recentste wijziging of verwijdering.
+  const when = (i) => i.deletedAt || i.updatedAt;
+  const all = new Map([...r.items, ...r.trash].map((i) => [i.id, i]));
+  for (const i of [...local.items, ...local.trash]) if (!all.has(i.id) || when(i) > when(all.get(i.id))) all.set(i.id, i);
+  r.items = [...all.values()].filter((i) => !i.deletedAt);
+  r.trash = [...all.values()].filter((i) => i.deletedAt);
   const moves = movesById(r.movements);
   for (const [k, m] of movesById(local.movements)) if (!moves.has(k)) moves.set(k, m);
   r.movements = sortMoves([...moves.values()]);
@@ -281,20 +306,21 @@ function merge(remote, local) {
   return r;
 }
 
-/** Geeft de laatste servertijd uit het online logboek terug (0 = nog niets), als startpunt voor later. */
+/** Geeft de laatste servertijden van logboek en artikels terug (0 = nog niets), als startpunt voor later. */
 async function firstSync() {
   const { F, meta, items, movements } = fb;
   const m = await F.getDocFromServer(meta);
   if (!m.exists()) {
     push(null, store.data); // nog niets online: alles van dit toestel opladen
-    return 0;
+    return { syncAt: 0, itemsAt: 0 };
   }
   const [its, mvs] = await Promise.all([F.getDocsFromServer(items), F.getDocsFromServer(movements)]);
   const remote = normalize({ ...m.data(), items: its.docs.map((s) => s.data()), movements: sortMoves(mvs.docs.map((s) => s.data())) });
   const merged = merge(remote, store.data);
   store.applyRemote(() => merged);
   push(remote, merged);
-  return Math.max(0, ...mvs.docs.map((s) => s.data().at?.toMillis?.() ?? 0));
+  const last = (docs) => Math.max(0, ...docs.map((s) => s.data().at?.toMillis?.() ?? 0));
+  return { syncAt: last(mvs.docs), itemsAt: last(its.docs) };
 }
 
 // ---- fouten
@@ -342,7 +368,7 @@ export const cloud = {
       // Vorige keer lukte het versturen niet helemaal: eerst alles gelijkzetten.
       if (prefs.value.cloudDirty) {
         setSyncer((prev) => { waitingSince ??= prev; });
-        prefs.set({ syncAt: await firstSync(), cloudDirty: false });
+        prefs.set({ ...(await firstSync()), itemsFullAt: Date.now(), cloudDirty: false });
       }
       listen();
     } catch (e) {
@@ -358,14 +384,14 @@ export const cloud = {
       await sdk();
       const { A, auth } = fb;
       const cred = await A.signInWithEmailAndPassword(auth, email.trim(), password);
-      let syncAt;
+      let at;
       try {
-        syncAt = await firstSync();
+        at = await firstSync();
       } catch (e) {
         await A.signOut(auth).catch(() => {});
         throw e;
       }
-      prefs.set({ cloudUser: cred.user.email, syncAt });
+      prefs.set({ cloudUser: cred.user.email, ...at, itemsFullAt: Date.now() });
       setStatus({ email: cred.user.email });
       listen();
       return true;
@@ -380,7 +406,7 @@ export const cloud = {
   async signOut() {
     stop();
     waitingSince = null;
-    prefs.set({ cloudUser: '', syncAt: 0, cloudDirty: false });
+    prefs.set({ cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, cloudDirty: false });
     setStatus({ state: 'off', pending: false, error: '' });
     try { await fb?.A.signOut(fb.auth); } catch { /* niet erg */ }
   },

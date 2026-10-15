@@ -25,6 +25,7 @@ export function ScanScreen() {
   const [mode, setMode] = useState(lastMode);
   const [found, setFound] = useState(null);
   const [unknown, setUnknown] = useState(null);
+  const [trashed, setTrashed] = useState(null); // artikel met deze code zit in de prullenmand
   const [product, setProduct] = useState(null); // product uit de productlijst bij een onbekende code
   const [result, setResult] = useState(null);
   const [batch, setBatch] = useState([]); // [[id, aantal]] in volgorde van scannen
@@ -33,7 +34,7 @@ export function ScanScreen() {
   const [hasTorch, setHasTorch] = useState(false);
   const lastSeen = useRef(new Map());
   const state = useRef({});
-  state.current = { mode, found, unknown };
+  state.current = { mode, found, unknown, trashed };
 
   useEffect(() => { lastMode = mode; }, [mode]);
   // Melding van de snelle scan na een paar seconden laten verdwijnen.
@@ -53,11 +54,15 @@ export function ScanScreen() {
     lastSeen.current.set(code, now);
     if (prev != null && now - prev < 1500) return;
     const s = state.current;
-    if (s.found || s.unknown) return;
+    if (s.found || s.unknown || s.trashed) return;
 
     if (p.scanSound) beep();
     const item = store.itemByCode(code);
-    if (!item) { setUnknown(code); setProduct(null); findByBarcode(code).then(setProduct); return; }
+    if (!item) {
+      const t = store.trashByCode(code);
+      if (t) { setTrashed(t); return; }
+      setUnknown(code); setProduct(null); findByBarcode(code).then(setProduct); return;
+    }
     if (s.mode === 'OPEN') { go('/artikel/' + item.id); return; }
     setResult(null);
     if (s.mode === 'SERIES') {
@@ -144,6 +149,16 @@ export function ScanScreen() {
       }}
       onOpen=${() => { const id = found; setFound(null); go('/artikel/' + id); }}
       onDismiss=${() => setFound(null)} />`}
+
+    ${trashed && html`<${ConfirmDialog} icon="i_delete" title="In de prullenmand"
+      text=${`${trashed.name} is verwijderd. Zet het terug om het weer te gebruiken.`}
+      confirmLabel="Terugzetten" onConfirm=${async () => {
+        const t = trashed;
+        setTrashed(null);
+        const r = await store.restore(t.id);
+        toast(r.renewed ? 'Teruggezet met een nieuwe code' : 'Teruggezet');
+      }}
+      onDismiss=${() => setTrashed(null)} />`}
 
     ${unknown && html`<${ConfirmDialog} icon="i_qr" title=${product ? 'Nog niet in je voorraad' : 'Onbekende code'}
       text=${product ? `${[product.brand, product.name].filter(Boolean).join(' ')}${product.description ? ' · ' + product.description : ''} staat nog niet in je voorraad.`

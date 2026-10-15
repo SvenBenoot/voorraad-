@@ -15,6 +15,7 @@ import { RestockScreen } from './screens/restock.js';
 import { SettingsScreen } from './screens/settings.js';
 import { UsageScreen } from './screens/usage.js';
 import { CatalogScreen } from './screens/catalog.js';
+import { TrashScreen } from './screens/trash.js';
 
 function screenFor(path) {
   const [, a, b] = path.split('/');
@@ -27,6 +28,7 @@ function screenFor(path) {
     case 'scan': return html`<${ScanScreen} />`;
     case 'aanvullen': return html`<${RestockScreen} />`;
     case 'verbruik': return html`<${UsageScreen} />`;
+    case 'prullenmand': return html`<${TrashScreen} />`;
     case 'instellingen': return html`<${SettingsScreen} />`;
     default: return html`<${HomeScreen} />`;
   }
@@ -66,6 +68,7 @@ document.addEventListener('pointerdown', (e) => {
   render(html`<${App} />`, document.getElementById('app'));
   // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
   cloud.start();
+  store.purgeTrash(); // wat langer dan 30 dagen in de prullenmand zit, verdwijnt (ook online)
 })();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

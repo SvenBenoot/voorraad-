@@ -2,7 +2,7 @@
 // Groot aantal met grote − en + (met één hand in de bestelwagen), QR-label en laatste wijzigingen.
 import { html, useEffect, useState } from '../../lib/preact-htm.js';
 import { store, categoryOf, status, needsRestock, shortage } from '../store.js';
-import {
+import { trashItem,
   useData, TopBar, IconButton, Card, Chip, StatusBanner, StatusPill, StepButton, Button, SectionHeader,
   ConfirmDialog, NumberField, ItemIcon, BigNumber, TONE, toast,
 } from '../ui.js';
@@ -95,8 +95,8 @@ export function ItemScreen({ id }) {
     </main>
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${item.name + ' verwijderen?'}
-      text="Dit kan niet ongedaan gemaakt worden."
-      confirmLabel="Verwijderen" onConfirm=${() => { setAskDelete(false); store.delete(item.id); }}
+      text="Je vindt het 30 dagen terug in de prullenmand."
+      confirmLabel="Verwijderen" onConfirm=${() => { setAskDelete(false); trashItem(item); }}
       onDismiss=${() => setAskDelete(false)} />`}
 
     ${askQuantity != null && html`<${ConfirmDialog} icon="i_edit" title="Aantal instellen"

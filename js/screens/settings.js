@@ -8,7 +8,7 @@ import {
   DialogButtons, ConfirmDialog, fmtDate, plural, toast,
 } from '../ui.js';
 import { makeBackup, readBackup, makeExcel, labelsPdf, shareOrDownload } from '../files.js';
-import { back } from '../router.js';
+import { back, go } from '../router.js';
 import { VERSION } from '../version.js';
 import { loadCatalog, resetCatalog } from '../catalog.js';
 import { CloudCard } from '../cloud-card.js';
@@ -156,6 +156,12 @@ export function SettingsScreen() {
         <div class="card-title">Alle labels afdrukken</div>
         <p class="sub">Een PDF met een label per artikel, 12 per A4.</p>
         <${Button} icon="i_print" onClick=${() => (data.items.length ? setShare('labels') : noItems('hun labels afdrukken'))}>PDF maken…<//>
+      <//>
+
+      <${SectionHeader}>Prullenmand<//>
+      <${Card} onClick=${() => go('/prullenmand')}>
+        <div class="card-title">Verwijderde artikels</div>
+        <p class="small faint">${data.trash.length ? plural(data.trash.length, 'artikel', 'artikels') + ' · 30 dagen bewaard' : 'Leeg'}</p>
       <//>
 
       <${SectionHeader}>Reservekopie<//>
