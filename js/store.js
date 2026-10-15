@@ -133,6 +133,10 @@ const listeners = new Set();
 // Krijgt (vorige, nieuwe) gegevens bij elke eigen wijziging; zet cloud.js als je online bewaart.
 let onSaved = null;
 export function setSyncer(fn) { onSaved = fn; }
+// Online opslaan mag het bewaren op het toestel nooit in de weg zitten: een fout daar wordt enkel gelogd.
+function sync(prev, next) {
+  try { onSaved?.(prev, next); } catch (e) { console.warn('Online opslaan', e); }
+}
 
 export const store = {
   get data() { return data; },
@@ -153,7 +157,7 @@ export const store = {
     const prev = data;
     data = next;
     emit();
-    onSaved?.(prev, next);
+    sync(prev, next);
     try {
       await backend.saveData(data);
     } catch (e) {
@@ -334,7 +338,7 @@ export const store = {
     const prev = data;
     data = normalize(raw);
     emit();
-    onSaved?.(prev, data);
+    sync(prev, data);
     await backend.saveData(data);
   },
 
@@ -369,7 +373,7 @@ function emit() { for (const fn of listeners) fn(data); }
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
+const settingDefaults = { cloudUser: '', syncAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
