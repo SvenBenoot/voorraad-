@@ -33,7 +33,7 @@ export function TrashScreen() {
           </div>
           <div class="btn-row">
             <${Button} icon="i_restore" onClick=${() => restore(it)}>Terugzetten<//>
-            <${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAsk({ kind: 'one', item: it })}>Wissen…<//>
+            <${Button} cls="danger-text" icon="i_delete" onClick=${() => setAsk({ kind: 'one', item: it })}>Wissen…<//>
           </div>
         <//>`)}
     </main>
