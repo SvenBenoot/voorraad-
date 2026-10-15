@@ -1,8 +1,9 @@
 // ---- Start van de app
 // Laadt de gegevens, kiest het thema en toont het scherm dat bij het adres hoort.
 import { html, render, useEffect } from '../lib/preact-htm.js';
-import { store, prefs } from './store.js';
+import { store } from './store.js';
 import { cloud } from './cloud.js';
+import { LoginScreen } from './cloud-card.js';
 import { usePrefs, ToastHost } from './ui.js';
 import { useRoute } from './router.js';
 import { unlockAudio } from './scanner.js';
@@ -44,7 +45,8 @@ function App() {
   // Nieuw scherm: bovenaan beginnen.
   useEffect(() => { window.scrollTo(0, 0); }, [path]);
 
-  return html`${screenFor(path)}<${ToastHost} />`;
+  // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
+  return html`${p.cloudUser ? screenFor(path) : html`<${LoginScreen} />`}<${ToastHost} />`;
 }
 
 // Tik naast een invoerveld: toetsenbord dicht (zoals in de Android-app).
@@ -55,7 +57,6 @@ document.addEventListener('pointerdown', (e) => {
 }, true);
 
 (async () => {
-  if (!prefs.value.firstUse) prefs.set({ firstUse: Date.now() });
   try {
     await store.load();
   } catch {

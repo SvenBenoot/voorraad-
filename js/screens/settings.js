@@ -15,13 +15,6 @@ import { CloudCard } from '../cloud-card.js';
 
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
-const DAY = 24 * 3600 * 1000;
-
-/** Moet er een herinnering komen voor een reservekopie? Na een week zonder kopie, als er iets te bewaren is. */
-export function backupDue(p, data) {
-  return !p.cloudUser && p.backupReminder && data.items.length > 0 && Date.now() - (p.lastBackup || p.firstUse || 0) > 7 * DAY;
-}
-
 /**
  * Venster dat een bestand klaarmaakt en daarna met één tik het deelmenu opent.
  * (Delen moet rechtstreeks uit een tik komen, daarom eerst maken en dan pas de knop.)
@@ -169,19 +162,13 @@ export function SettingsScreen() {
       <${SectionHeader}>Reservekopie<//>
       <${Card}>
         <div class="card-title">Gegevens bewaren in iCloud Drive</div>
-        <p class="sub">${p.cloudUser
-          ? 'Alles staat online en op dit toestel. Een reservekopie in iCloud Drive is een extra kopie voor de zekerheid.'
-          : 'Alles staat enkel op dit toestel. Verwijder je de app, dan is alles weg. Log in bij Online opslaan, of bewaar geregeld een reservekopie in iCloud Drive; die kan je ook terugzetten op een nieuwe gsm.'}</p>
+        <p class="sub">Alles staat online en op dit toestel. Een reservekopie in iCloud Drive is een extra kopie voor de zekerheid.</p>
         <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt op dit toestel.'}</p>
         <div class="btn-row wrap">
           <${Button} kind="primary" icon="i_backup" onClick=${() => setShare('backup')}>Reservekopie maken…<//>
           <${Button} icon="i_restore" onClick=${() => fileInput.current.click()}>Terugzetten…<//>
         </div>
         <input ref=${fileInput} type="file" accept=".zip,application/zip" hidden onChange=${onRestoreFile} />
-        ${!p.cloudUser && html`<div class="setting-row">
-          <div><div class="card-title">Herinnering elke week</div><div class="small faint">Na een week zonder kopie vraagt de app op het startscherm om er een te maken.</div></div>
-          <${Switch} checked=${p.backupReminder} label="Herinnering elke week" onChange=${(v) => prefs.set({ backupReminder: v })} />
-        </div>`}
       <//>
 
       <${SectionHeader}>Over deze app<//>
@@ -202,7 +189,7 @@ export function SettingsScreen() {
       text="Kies in het deelmenu Druk af, of bewaar de PDF in Bestanden." button="Delen…" onDismiss=${() => setShare(null)} />`}
 
     ${restore && html`<${ConfirmDialog} kind="danger" icon="i_restore" title="Reservekopie terugzetten?"
-      text=${`In de kopie staan ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')}. Alle artikels die nu op ${p.cloudUser ? 'dit toestel en online' : 'dit toestel'} staan, worden vervangen door die uit de reservekopie. Dit kan niet ongedaan gemaakt worden.`}
+      text=${`In de kopie staan ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')}. Alle artikels die nu op dit toestel en online staan, worden vervangen door die uit de reservekopie. Dit kan niet ongedaan gemaakt worden.`}
       confirmLabel="Terugzetten" onConfirm=${async () => {
         const r = restore;
         setRestore(null);

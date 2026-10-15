@@ -369,7 +369,7 @@ function emit() { for (const fn of listeners) fn(data); }
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, backupReminder: true, scanSound: true };
+const settingDefaults = { cloudUser: '', theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
