@@ -1,0 +1,6 @@
+<!-- App-icoon (bron): de doos in het merkverloop op donker petrol. Hiermee zijn de PNG-iconen gemaakt; voor "any" wordt viewBox 14 14 80 80 gebruikt. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="100%" height="100%">
+<defs><linearGradient id="g" x1="35" y1="75" x2="73" y2="33" gradientUnits="userSpaceOnUse"><stop stop-color="#30A9CE"/><stop offset="1" stop-color="#30CF8A"/></linearGradient></defs>
+<rect x="-50" y="-50" width="300" height="300" fill="#14272F"/>
+<g transform="translate(54 54) scale(1.5) translate(-54 -54)"><path d="M54,33 L72.2,43.5 L72.2,64.5 L54,75 L35.8,64.5 L35.8,43.5 Z M35.8,43.5 L54,54 L72.2,43.5 M54,54 L54,75" fill="none" stroke="url(#g)" stroke-width="4.6" stroke-linejoin="round" stroke-linecap="round"/></g>
+</svg>
