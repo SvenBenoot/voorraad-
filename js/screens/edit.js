@@ -2,7 +2,7 @@
 // Naam, merk, icoon, categorie, aantal, minimum, plaats, QR-code en notitie. Pas bij Bewaren wordt iets weggeschreven.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { store, newId, categoryOf } from '../store.js';
-import {
+import { trashItem,
   useData, TopBar, Footer, Button, IconButton, StepButton, Dialog, DialogButtons,
   ConfirmDialog, ItemIcon, IconGrid, toast, usePrefs,
 } from '../ui.js';
@@ -216,8 +216,8 @@ export function EditScreen({ id, code: presetCode, product }) {
     </div>`}
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${original.name + ' verwijderen?'}
-      text="Dit kan niet ongedaan gemaakt worden."
-      confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await store.delete(original.id); home(); }}
+      text="Je vindt het 30 dagen terug in de prullenmand."
+      confirmLabel="Verwijderen" onConfirm=${async () => { setAskDelete(false); await trashItem(original); home(); }}
       onDismiss=${() => setAskDelete(false)} />`}
 
     ${askLeave && html`<${ConfirmDialog} kind="warning" icon="i_warning" title="Niet bewaren?"

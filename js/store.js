@@ -41,6 +41,11 @@ export const DEFAULT_CATEGORIES = [
 ];
 
 export const MAX_MOVEMENTS = 3000;
+/** Hoelang een verwijderd artikel in de prullenmand blijft. */
+export const TRASH_DAYS = 30;
+const DAY = 24 * 3600 * 1000;
+/** Nog hoeveel dagen (minstens 1) een artikel in de prullenmand blijft. */
+export const daysLeft = (t) => Math.max(1, Math.ceil((t.deletedAt + TRASH_DAYS * DAY - Date.now()) / DAY));
 
 export const SORT_MODES = [
   { key: 'NAME', label: 'Naam', icon: 'i_sort_alpha' },
@@ -92,14 +97,25 @@ export function normalize(raw) {
   // Een artikel heeft altijd een eigen icoon. Oudere gegevens (geen icoon = dat van de categorie) krijgen het icoon
   // dat ze nu tonen, zodat het niet meer meeverandert als je de categorie wijzigt.
   const iconOf = (catId) => (categories.find((c) => c.id === catId) ?? categories.find((c) => c.id === OTHER))?.icon ?? 'other';
+  const mapItem = (it) => ({
+    id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''), brand: String(it.brand ?? ''),
+    category: it.category ?? 'CABLE', quantity: Math.max(0, it.quantity | 0), minimum: Math.max(0, it.minimum | 0),
+    location: it.location ?? '', note: it.note ?? '', icon: it.icon || iconOf(it.category ?? 'CABLE'),
+    createdAt: it.createdAt ?? now, updatedAt: it.updatedAt ?? now,
+  });
+  // Verwijderde artikels (met deletedAt) staan apart in de prullenmand. Online staan ze samen met de andere artikels;
+  // komt een artikel in beide lijsten voor, dan telt de recentste wijziging of verwijdering.
+  const byId = new Map();
+  for (const it of [...(raw?.items ?? []), ...(raw?.trash ?? [])]) {
+    const at = it.deletedAt || it.updatedAt || 0;
+    const old = byId.get(String(it.id));
+    if (!old || at > (old.deletedAt || old.updatedAt || 0)) byId.set(String(it.id), it);
+  }
+  const all = [...byId.values()];
   const d = {
     version: raw?.version ?? 1,
-    items: (raw?.items ?? []).map((it) => ({
-      id: String(it.id), code: String(it.code ?? ''), name: String(it.name ?? ''), brand: String(it.brand ?? ''),
-      category: it.category ?? 'CABLE', quantity: Math.max(0, it.quantity | 0), minimum: Math.max(0, it.minimum | 0),
-      location: it.location ?? '', note: it.note ?? '', icon: it.icon || iconOf(it.category ?? 'CABLE'),
-      createdAt: it.createdAt ?? now, updatedAt: it.updatedAt ?? now,
-    })),
+    items: all.filter((it) => !it.deletedAt).map(mapItem),
+    trash: all.filter((it) => it.deletedAt).map((it) => ({ ...mapItem(it), deletedAt: +it.deletedAt })),
     movements: (raw?.movements ?? []).map((m) => ({
       itemId: m.itemId, delta: m.delta | 0, newQuantity: m.newQuantity | 0, time: m.time ?? now,
       ...(m.restock ? { restock: true } : {}),
@@ -174,15 +190,14 @@ export const store = {
     return data.items.find((i) => i.code.toLowerCase() === c);
   },
 
-  /** Nieuwe, korte code voor een QR-label, bv. "VG-K7M2QX". Zonder tekens die op elkaar lijken (0/O, 1/I). */
-  newCode() {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    for (;;) {
-      const bytes = crypto.getRandomValues(new Uint8Array(6));
-      const code = 'VG-' + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
-      if (!this.itemByCode(code)) return code;
-    }
+  /** Een verwijderd artikel met deze code (staat in de prullenmand). */
+  trashByCode(code) {
+    const c = code.trim().toLowerCase();
+    return data.trash.find((i) => i.code.toLowerCase() === c);
   },
+
+  /** Nieuwe, korte code voor een QR-label, bv. "VG-K7M2QX". Zonder tekens die op elkaar lijken (0/O, 1/I). */
+  newCode() { return freshCode(data); },
 
   // ---- artikels
 
@@ -220,13 +235,55 @@ export const store = {
 
   adjustMany(deltas) { return this.update((d) => applyDeltas(d, deltas)); },
 
+  /** Verwijderen = naar de prullenmand (30 dagen), niet meteen weg. */
   async delete(id) {
     await this.update((d) => {
-      const name = d.items.find((i) => i.id === id)?.name ?? '';
+      const item = d.items.find((i) => i.id === id);
+      if (!item) return null;
       d.items = d.items.filter((i) => i.id !== id);
+      d.trash = [...d.trash, { ...item, deletedAt: Date.now() }];
       // Logboek houden (met de naam erbij), zodat Verbruik van die dag blijft kloppen.
-      d.movements = d.movements.map((m) => (m.itemId === id ? { ...m, name } : m));
+      d.movements = d.movements.map((m) => (m.itemId === id ? { ...m, name: item.name } : m));
       d.pickList = d.pickList.filter((p) => p.itemId !== id);
+      return d;
+    });
+  },
+
+  /** Haalt een artikel uit de prullenmand. Is de code intussen aan iets anders gegeven, dan krijgt het een nieuwe code. */
+  async restore(id) {
+    let renewed = false;
+    await this.update((d) => {
+      const t = d.trash.find((i) => i.id === id);
+      if (!t) return null;
+      const { deletedAt, ...item } = t; // eslint-disable-line no-unused-vars
+      if (d.items.some((i) => i.code.toLowerCase() === item.code.toLowerCase())) { item.code = freshCode(d); renewed = true; }
+      d.trash = d.trash.filter((i) => i.id !== id);
+      d.items = [...d.items, { ...item, updatedAt: Date.now() }];
+      // De naam in het logboek was enkel nodig zolang het artikel weg was.
+      d.movements = d.movements.map((m) => { if (m.itemId !== id || !('name' in m)) return m; const { name, ...rest } = m; return rest; }); // eslint-disable-line no-unused-vars
+      return d;
+    });
+    return { renewed };
+  },
+
+  /** Definitief verwijderen uit de prullenmand ([ids] weglaten = alles). */
+  deleteForever(ids) {
+    return this.update((d) => {
+      const gone = ids ? new Set(ids) : null;
+      const keep = gone ? d.trash.filter((i) => !gone.has(i.id)) : [];
+      if (keep.length === d.trash.length) return null;
+      d.trash = keep;
+      return d;
+    });
+  },
+
+  /** Haalt wat langer dan 30 dagen in de prullenmand zit weg. */
+  purgeTrash() {
+    const limit = Date.now() - TRASH_DAYS * DAY;
+    return this.update((d) => {
+      const keep = d.trash.filter((i) => i.deletedAt > limit);
+      if (keep.length === d.trash.length) return null;
+      d.trash = keep;
       return d;
     });
   },
@@ -370,10 +427,21 @@ function applyDeltas(d, deltas, extra = {}) {
 
 function emit() { for (const fn of listeners) fn(data); }
 
+/** Een code die nog niet bij een artikel hoort (ook niet bij een in de prullenmand, dat label zit er misschien nog op). */
+function freshCode(d) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const taken = new Set([...d.items, ...d.trash].map((i) => i.code.toLowerCase()));
+  for (;;) {
+    const bytes = crypto.getRandomValues(new Uint8Array(6));
+    const code = 'VG-' + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+    if (!taken.has(code.toLowerCase())) return code;
+  }
+}
+
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

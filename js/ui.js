@@ -246,17 +246,29 @@ export function IconGrid({ value, onPick }) {
 // ---- korte melding onderaan
 
 let toastSet;
-export function toast(text) { toastSet?.(text); }
+/** Korte melding; met [action] ({ label, onClick }) komt er een knop bij, bv. Ongedaan maken. */
+export function toast(text, action) { toastSet?.(text, action ? 6000 : 2600, action); }
 export function ToastHost() {
-  const [text, setText] = useState(null);
+  const [t, setT] = useState(null);
   const timer = useRef();
-  toastSet = (t, ms = 2600) => { setText(t); clearTimeout(timer.current); timer.current = setTimeout(() => setText(null), ms); };
+  toastSet = (text, ms, action) => { setT({ text, action }); clearTimeout(timer.current); timer.current = setTimeout(() => setT(null), ms); };
   useEffect(() => {
     const onError = (e) => toastSet(e.detail, 6000);
     window.addEventListener('voorraad-fout', onError);
     return () => window.removeEventListener('voorraad-fout', onError);
   }, []);
-  return text ? html`<div class="toast" role="status">${text}</div>` : null;
+  return t ? html`<div class="toast" role="status"><span>${t.text}</span>
+    ${t.action && html`<button type="button" class="toast-action"
+      onClick=${() => { clearTimeout(timer.current); setT(null); t.action.onClick(); }}>${t.action.label}</button>`}</div>` : null;
+}
+
+/** Artikel naar de prullenmand, met een melding om het meteen terug te zetten. */
+export async function trashItem(item) {
+  await store.delete(item.id);
+  toast('Verwijderd', {
+    label: 'Ongedaan maken',
+    onClick: async () => { const r = await store.restore(item.id); toast(r.renewed ? 'Teruggezet met een nieuwe code' : 'Teruggezet'); },
+  });
 }
 
 // ---- vegen
