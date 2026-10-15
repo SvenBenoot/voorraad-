@@ -32,11 +32,11 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const go = async (create) => {
+  const go = async () => {
     setBusy(true);
-    const ok = await cloud.signIn(email, password, create);
+    const ok = await cloud.signIn(email, password);
     setBusy(false);
-    if (ok) toast(create ? 'Account gemaakt, alles staat nu online' : 'Ingelogd');
+    if (ok) toast('Ingelogd');
   };
   const ready = email.includes('@') && password.length > 0;
 
@@ -56,21 +56,13 @@ export function LoginScreen() {
       <div class="empty login-head">
         <div class="empty-icon"><${Icon} name="i_cloud_done" size=${32} /></div>
         <div class="empty-title">Inloggen</div>
-        <div class="empty-text">Je voorraad wordt online bewaard, zodat ze veilig is als je iPhone stuk of kwijt is,
-          en je op elk toestel dezelfde voorraad ziet.</div>
+        <div class="empty-text">Je voorraad wordt online bewaard. Zo is ze altijd veilig en zie je op elk toestel dezelfde voorraad.</div>
       </div>
       <${Card}>
         ${s.error && html`<${StatusBanner} tone="orange" icon="i_error" title="Lukte niet" text=${s.error} />`}
         <${TextField} label="E-mailadres" type="email" autocomplete="username" value=${email} onInput=${setEmail} hint="naam@gmail.com" />
-        <${TextField} label="Wachtwoord" type="password" autocomplete="current-password" value=${password} onInput=${setPassword}
-          help="De eerste keer: kies een wachtwoord (minstens 6 tekens) en tik op Account maken." />
-        <div class="btn-row wrap">
-          <${Button} kind="primary" icon="i_cloud_done" disabled=${busy || !ready} onClick=${() => go(false)}>${busy ? 'Bezig…' : 'Inloggen'}<//>
-          <${Button} icon="i_add" disabled=${busy || !ready} onClick=${() => go(true)}>Account maken<//>
-        </div>
-        <${Button} kind="ghost" icon="i_key" disabled=${busy || !email.includes('@')} onClick=${async () => {
-          if (await cloud.resetPassword(email)) toast('Mail verstuurd om je wachtwoord te wijzigen');
-        }}>Wachtwoord vergeten?<//>
+        <${TextField} label="Wachtwoord" type="password" autocomplete="current-password" value=${password} onInput=${setPassword} />
+        <${Button} kind="primary" icon="i_cloud_done" cls="wide" disabled=${busy || !ready} onClick=${go}>${busy ? 'Bezig…' : 'Inloggen'}<//>
       <//>
     </main>
   </div>`;

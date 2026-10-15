@@ -215,13 +215,11 @@ async function firstSync() {
 // ---- fouten
 
 const MESSAGES = {
-  'auth/invalid-credential': 'E-mailadres of wachtwoord klopt niet. Nog geen account? Tik dan op Account maken.',
+  'auth/invalid-credential': 'E-mailadres of wachtwoord klopt niet.',
   'auth/wrong-password': 'Het wachtwoord klopt niet.',
-  'auth/user-not-found': 'Er is nog geen account met dit e-mailadres. Tik op Account maken.',
+  'auth/user-not-found': 'Er is geen account met dit e-mailadres.',
   'auth/invalid-email': 'Dit e-mailadres klopt niet.',
   'auth/missing-password': 'Vul je wachtwoord in.',
-  'auth/email-already-in-use': 'Er is al een account met dit e-mailadres. Tik op Inloggen.',
-  'auth/weak-password': 'Kies een wachtwoord van minstens 6 tekens.',
   'auth/operation-not-allowed': 'Inloggen met e-mail en wachtwoord staat nog niet aan in Firebase (Authentication › Sign-in method › E-mailadres/wachtwoord).',
   'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer opnieuw.',
   'auth/network-request-failed': 'Geen internet. Probeer opnieuw als je verbinding hebt.',
@@ -263,15 +261,13 @@ export const cloud = {
     }
   },
 
-  /** Inloggen (of met [create] een nieuw account maken) en de gegevens samenvoegen met wat online staat. */
-  async signIn(email, password, create = false) {
+  /** Inloggen en de gegevens samenvoegen met wat online staat. Accounts maak je in de Firebase-console. */
+  async signIn(email, password) {
     setStatus({ state: 'busy', error: '' });
     try {
       await sdk();
       const { A, auth } = fb;
-      const cred = create
-        ? await A.createUserWithEmailAndPassword(auth, email.trim(), password)
-        : await A.signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await A.signInWithEmailAndPassword(auth, email.trim(), password);
       try {
         await firstSync();
       } catch (e) {
@@ -288,17 +284,6 @@ export const cloud = {
     }
   },
 
-  async resetPassword(email) {
-    try {
-      await sdk();
-      await fb.A.sendPasswordResetEmail(fb.auth, email.trim());
-      setStatus({ error: '' });
-      return true;
-    } catch (e) {
-      setStatus({ error: message(e) });
-      return false;
-    }
-  },
 
   /** Uitloggen: de gegevens blijven op dit toestel staan, maar gaan niet meer online. */
   async signOut() {
