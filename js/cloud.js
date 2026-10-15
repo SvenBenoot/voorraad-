@@ -220,13 +220,13 @@ const MESSAGES = {
   'auth/user-not-found': 'Er is geen account met dit e-mailadres.',
   'auth/invalid-email': 'Dit e-mailadres klopt niet.',
   'auth/missing-password': 'Vul je wachtwoord in.',
-  'auth/operation-not-allowed': 'Inloggen met e-mail en wachtwoord staat nog niet aan in Firebase (Authentication › Sign-in method › E-mailadres/wachtwoord).',
-  'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer opnieuw.',
-  'auth/network-request-failed': 'Geen internet. Probeer opnieuw als je verbinding hebt.',
-  'permission-denied': 'Dit account mag niet in de online database. Staat dit e-mailadres in de Firestore-regels?',
-  unavailable: 'Geen verbinding met de online database. Probeer opnieuw als je internet hebt.',
+  'auth/operation-not-allowed': 'Inloggen is nog niet ingeschakeld.',
+  'auth/too-many-requests': 'Te veel pogingen. Probeer later opnieuw.',
+  'auth/network-request-failed': 'Geen internet. Probeer opnieuw.',
+  'permission-denied': 'Dit account heeft geen toegang.',
+  unavailable: 'Geen verbinding. Probeer opnieuw.',
 };
-const message = (e) => MESSAGES[e?.code] ?? 'Er ging iets mis met online opslaan. Probeer opnieuw.';
+const message = (e) => MESSAGES[e?.code] ?? 'Er ging iets mis. Probeer opnieuw.';
 
 function fail(e) {
   console.warn('Firebase', e);
@@ -251,7 +251,7 @@ export const cloud = {
         setSyncer(null);
         waitingSince = null;
         prefs.set({ cloudUser: '' });
-        setStatus({ state: 'off', error: 'Je bent niet meer ingelogd. Log opnieuw in om online te bewaren.' });
+        setStatus({ state: 'off', error: 'Log opnieuw in.' });
         return;
       }
       listen();

@@ -29,7 +29,7 @@ function ProductSearch({ onPick, onOwned }) {
     <div class="product-search">
       <${SearchField} value=${query} onInput=${setQuery} hint="Zoek op merk, naam, barcode…" />
     </div>
-    ${failed ? html`<p class="sub">De productlijst kon niet geladen worden. Controleer je internet en probeer opnieuw.</p>`
+    ${failed ? html`<p class="sub">De productlijst kon niet geladen worden.</p>`
       : !all ? html`<p class="sub">Productlijst laden…</p>`
       : html`
         <p class="small faint">${words.length ? `${hits.length.toLocaleString('nl-BE')} gevonden` : `${all.length.toLocaleString('nl-BE')} producten`}${hits.length > SHOWN ? ` · eerste ${SHOWN} getoond, typ verder om te verfijnen` : ''}</p>

@@ -60,7 +60,7 @@ document.addEventListener('pointerdown', (e) => {
   try {
     await store.load();
   } catch {
-    document.getElementById('app').innerHTML = '<p style="padding:24px">De gegevens konden niet geladen worden. Sluit de app helemaal af en open ze opnieuw.</p>';
+    document.getElementById('app').innerHTML = '<p style="padding:24px">De gegevens konden niet geladen worden. Open de app opnieuw.</p>';
     return;
   }
   render(html`<${App} />`, document.getElementById('app'));

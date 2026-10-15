@@ -106,16 +106,16 @@ export function HomeScreen() {
 
       ${restockCount > 0 && activeFilter !== 'restock' && html`<${StatusBanner} tone="orange" icon="i_warning"
         title=${restockCount === 1 ? '1 artikel bijvullen' : `${restockCount} artikels bijvullen`}
-        text="Op of onder de minimumvoorraad. Tik om je aanvullijst voor het magazijn te openen."
+        text="Onder de minimumvoorraad. Tik om aan te vullen."
         onClick=${() => go('/aanvullen')} />`}
 
       ${data.items.length === 0 ? html`<${EmptyState} title="Nog geen artikels"
-          text="Tik bovenaan op + om je eerste kabel, fiche of toestel in te geven. Je krijgt er meteen een QR-code bij." />`
-        : shown.length === 0 ? html`<p class="sub nothing">Niets gevonden. Probeer een ander woord, of kies bovenaan Alles en Alle merken.</p>` : null}
+          text="Tik op + om een artikel toe te voegen." />`
+        : shown.length === 0 ? html`<p class="sub nothing">Niets gevonden.</p>` : null}
 
       ${rows}
 
-      ${data.items.length > 0 && !p.swipeLearned && html`<p class="small faint">Tip: veeg een artikel naar rechts om te wijzigen, naar links om te verwijderen.</p>`}
+      ${data.items.length > 0 && !p.swipeLearned && html`<p class="small faint">Veeg naar rechts om te wijzigen, naar links om te verwijderen.</p>`}
     </main>
     <${Footer}>
       <${Button} kind="primary" icon="i_scan" cls="wide" onClick=${() => go('/scan')}>Scannen<//>
@@ -138,11 +138,10 @@ export function HomeScreen() {
     <//>`}
     ${syncInfo && html`<${SyncDialog} onDismiss=${() => setSyncInfo(false)} />`}
     ${askEdit && html`<${ConfirmDialog} icon="i_edit" title=${askEdit.name + ' wijzigen?'}
-      text="Je opent het formulier om naam, merk, icoon, categorie, aantal of plaats aan te passen."
       confirmLabel="Wijzigen" onConfirm=${() => { const id = askEdit.id; setAskEdit(null); go('/wijzigen/' + id); }}
       onDismiss=${() => setAskEdit(null)} />`}
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${askDelete.name + ' verwijderen?'}
-      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { store.delete(askDelete.id); setAskDelete(null); }}
       onDismiss=${() => setAskDelete(null)} />`}
   </div>`;

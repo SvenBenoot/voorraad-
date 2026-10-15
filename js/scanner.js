@@ -140,8 +140,8 @@ export function Scanner({ onCode, torch = false, onTorchSupport }) {
       <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M10.94 8.12 7.48 4.66 9 3h6l1.83 2H20c1.1 0 2 .9 2 2v12c0 .05-.01.1-.02.16L20 17.17V7h-4.05l-1.83-2H9.88L8.9 6.07zm9.55 15.2L18.17 21H4c-1.1 0-2-.9-2-2V7c0-.59.27-1.12.68-1.49l-2-2L2.1 2.1l19.8 19.8zM9.12 11.95c-.08.27-.12.55-.12.85 0 1.66 1.34 3 3 3 .3 0 .58-.04.85-.12zM16.17 19l-1.68-1.68c-.73.43-1.58.68-2.49.68-2.76 0-5-2.24-5-5 0-.91.25-1.76.68-2.49L4.17 7H4v12z"/></svg></div>
       <div class="empty-title">Geen toegang tot de camera</div>
       <div class="empty-text">${error === 'denied'
-        ? 'Sta de camera toe: Instellingen › Safari › Camera › Sta toe. Open daarna dit scherm opnieuw.'
-        : 'De camera kon niet starten. Sluit andere apps die de camera gebruiken en probeer opnieuw.'}</div>
+        ? 'Geef de app toegang tot de camera en probeer opnieuw.'
+        : 'De camera kon niet starten. Probeer opnieuw.'}</div>
     </div>`;
   }
 

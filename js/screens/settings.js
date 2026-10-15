@@ -32,7 +32,7 @@ function ShareDialog({ make, icon, title, text, button, onShared, onDismiss }) {
       <span class=${'confirm-icon tone-' + (error ? 'red' : 'blue')}><${Icon} name=${error ? 'i_error' : icon} size=${22} /></span>
       <div class="confirm-body">
         <div class="card-title">${error ? 'Lukte niet' : title}</div>
-        <div class="confirm-text">${error ? 'Het bestand kon niet gemaakt worden. Probeer opnieuw.' : file ? text : 'Bezig met klaarmaken…'}</div>
+        <div class="confirm-text">${error ? 'Probeer opnieuw.' : file ? text : 'Bezig met klaarmaken…'}</div>
         ${file && html`<div class="small faint mono">${file.name} · ${file.size < 1024 * 1024 ? Math.max(1, Math.round(file.size / 1024)) + ' kB' : (file.size / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB'}</div>`}
       </div>
     </div>
@@ -50,7 +50,7 @@ function ShareDialog({ make, icon, title, text, button, onShared, onDismiss }) {
 
 export function BackupDialog({ onDismiss }) {
   return html`<${ShareDialog} make=${makeBackup} icon="i_backup" title="Reservekopie klaar"
-    text="Kies in het deelmenu Bewaar in Bestanden en dan iCloud Drive. Bewaar ze bv. in een map Voorraad."
+    text="Bewaar ze bv. in je cloudopslag."
     button="Bewaren…" onDismiss=${onDismiss}
     onShared=${(res) => { prefs.set({ lastBackup: Date.now() }); toast(res === 'downloaded' ? 'Reservekopie gedownload' : 'Reservekopie bewaard'); }} />`;
 }
@@ -85,7 +85,7 @@ export function SettingsScreen() {
       await refreshCatalog();
       setNotice({ ok: true, title: 'Productlijst ingelezen', text: `${rows.length.toLocaleString('nl-BE')} producten uit ${file.name}.` });
     } catch {
-      setNotice({ ok: false, title: 'Inlezen mislukt', text: 'Dit bestand kon niet gelezen worden. Kies de Excel-export (.xlsx) uit het CRM met de kolommen Merk, Interne referentie, Barcode en Naam.' });
+      setNotice({ ok: false, title: 'Inlezen mislukt', text: 'Kies een Excel-export (.xlsx) met de kolommen Merk, Interne referentie, Barcode en Naam.' });
     }
     setCatBusy(false);
     window.scrollTo(0, 0);
@@ -101,7 +101,7 @@ export function SettingsScreen() {
     try {
       setRestore({ file, ...(await readBackup(file)) });
     } catch {
-      setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'Dit bestand is geen reservekopie van deze app. Kies het zip-bestand dat je met Bewaren… maakte.' });
+      setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'Dit is geen reservekopie van deze app.' });
     }
   };
 
@@ -114,8 +114,7 @@ export function SettingsScreen() {
       ${!isStandalone() && html`<${SectionHeader}>Op je beginscherm<//>
         <${Card}>
           <div class="card-title">Zet de app op je beginscherm</div>
-          <p class="sub">Tik in Safari onderaan op <span class="inline-icon"><${Icon} name="i_share" size=${16} /></span> Deel en kies <b>Zet op beginscherm</b>.
-            Dan opent de app schermvullend, zonder adresbalk, en werkt ze ook zonder internet.</p>
+          <p class="sub">Open het deelmenu <span class="inline-icon"><${Icon} name="i_share" size=${16} /></span> van je browser en kies <b>Zet op beginscherm</b>.</p>
         <//>`}
 
       <${SectionHeader}>Online opslaan<//>
@@ -125,7 +124,7 @@ export function SettingsScreen() {
       <${Card}>
         <div class="chip-row tight">${themes.map(([k, l]) => html`<${FilterChip} selected=${p.theme === k} onClick=${() => prefs.set({ theme: k })}>${l}<//>`)}</div>
         <div class="setting-row">
-          <div><div class="card-title">Piep bij scannen</div><div class="small faint">Korte toon als een code gelezen is.</div></div>
+          <div><div class="card-title">Piep bij scannen</div><div class="small faint">Toon bij een gelezen code.</div></div>
           <${Switch} checked=${p.scanSound} label="Piep bij scannen" onChange=${(v) => prefs.set({ scanSound: v })} />
         </div>
       <//>
@@ -133,7 +132,7 @@ export function SettingsScreen() {
       <${SectionHeader}>Productlijst<//>
       <${Card}>
         <div class="card-title">Producten uit het CRM</div>
-        <p class="sub">De lijst waaruit je kiest bij Nieuw artikel. Komt er een nieuwe export uit het CRM, lees die hier in.</p>
+        <p class="sub">De lijst waaruit je kiest bij een nieuw artikel.</p>
         <p class="small faint">${!catInfo ? 'Laden…' : `${catInfo.count.toLocaleString('nl-BE')} producten · `
           + (catInfo.own ? `ingelezen op ${fmtDate(catInfo.own.date, false)} uit ${catInfo.own.file}` : 'meegeleverde lijst')}</p>
         <div class="btn-row wrap">
@@ -148,22 +147,22 @@ export function SettingsScreen() {
       <${SectionHeader}>Exporteren<//>
       <${Card}>
         <div class="card-title">Excel-lijst</div>
-        <p class="sub">Alle artikels in een Excel-bestand: naam, merk, categorie, aantal, minimum, bij te vullen, plaats, QR-code, notitie en datum.</p>
+        <p class="sub">Alle artikels in een Excel-bestand.</p>
         <${Button} icon="i_table" onClick=${() => (data.items.length ? setShare('excel') : noItems('ze exporteren'))}>Excel maken…<//>
       <//>
 
       <${SectionHeader}>QR-labels<//>
       <${Card}>
         <div class="card-title">Alle labels afdrukken</div>
-        <p class="sub">Maakt een PDF met één label per artikel (12 per A4-blad). Deel hem naar je printer of mail.</p>
+        <p class="sub">Een PDF met een label per artikel, 12 per A4.</p>
         <${Button} icon="i_print" onClick=${() => (data.items.length ? setShare('labels') : noItems('hun labels afdrukken'))}>PDF maken…<//>
       <//>
 
       <${SectionHeader}>Reservekopie<//>
       <${Card}>
-        <div class="card-title">Gegevens bewaren in iCloud Drive</div>
-        <p class="sub">Alles staat online en op dit toestel. Een reservekopie in iCloud Drive is een extra kopie voor de zekerheid.</p>
-        <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt op dit toestel.'}</p>
+        <div class="card-title">Kopie als bestand</div>
+        <p class="sub">Een extra kopie van al je gegevens, als bestand.</p>
+        <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt.'}</p>
         <div class="btn-row wrap">
           <${Button} kind="primary" icon="i_backup" onClick=${() => setShare('backup')}>Reservekopie maken…<//>
           <${Button} icon="i_restore" onClick=${() => fileInput.current.click()}>Terugzetten…<//>
@@ -177,7 +176,6 @@ export function SettingsScreen() {
         <div class="sub">Versie ${VERSION} · web-app</div>
         <p class="small faint">Gemaakt door Sven Benoot · Van Gils, Beernem · vangils.pro</p>
       <//>
-      <p class="small faint">Wijzigingen worden meteen bewaard.</p>
     </main>
 
     ${share === 'backup' && html`<${BackupDialog} onDismiss=${() => setShare(null)} />`}
@@ -186,10 +184,10 @@ export function SettingsScreen() {
       button="Delen…" onDismiss=${() => setShare(null)} />`}
     ${share === 'labels' && html`<${ShareDialog} icon="i_print" title="Labels klaar"
       make=${() => labelsPdf([...data.items].sort((a, b) => collator.compare(a.name, b.name)))}
-      text="Kies in het deelmenu Druk af, of bewaar de PDF in Bestanden." button="Delen…" onDismiss=${() => setShare(null)} />`}
+      text="Druk af of bewaar de PDF." button="Delen…" onDismiss=${() => setShare(null)} />`}
 
     ${restore && html`<${ConfirmDialog} kind="danger" icon="i_restore" title="Reservekopie terugzetten?"
-      text=${`In de kopie staan ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')}. Alle artikels die nu op dit toestel en online staan, worden vervangen door die uit de reservekopie. Dit kan niet ongedaan gemaakt worden.`}
+      text=${`Je huidige artikels worden vervangen door de ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')} uit de kopie. Dit kan niet ongedaan gemaakt worden.`}
       confirmLabel="Terugzetten" onConfirm=${async () => {
         const r = restore;
         setRestore(null);
@@ -197,7 +195,7 @@ export function SettingsScreen() {
           await store.replaceAll(r.raw);
           setNotice({ ok: true, title: 'Reservekopie teruggezet', text: `${plural(store.data.items.length, 'artikel is', 'artikels zijn')} hersteld.` });
         } catch {
-          setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'De kopie kon niet ingelezen worden. Probeer opnieuw.' });
+          setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'Probeer opnieuw.' });
         }
       }} onDismiss=${() => setRestore(null)} />`}
   </div>`;

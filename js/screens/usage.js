@@ -117,7 +117,7 @@ export function UsageScreen() {
       </div>
 
       ${rows.length === 0 ? html`<${EmptyState} icon="i_history" title=${day === today ? 'Vandaag nog niets gebruikt' : 'Niets gebruikt op deze dag'}
-          text="Telkens je een aantal verlaagt (met −, scannen of in het formulier) komt het hier bij die dag te staan." />`
+          text="Wat je gebruikt, verschijnt hier per dag." />`
         : html`
         <${Card}>
           <div class="progress-head">
@@ -125,8 +125,7 @@ export function UsageScreen() {
             <span class="sub">${total === 1 ? 'stuk' : 'stuks'} gebruikt<br />${plural(rows.length, 'artikel', 'artikels')}</span>
           </div>
         <//>
-        ${list}
-        <p class="small faint">Tik op het deelicoon bovenaan om dit overzicht door te sturen, bv. naar het bureau. Per ongeluk verlaagd en binnen 5 minuten terug verhoogd? Dan valt het weg. Wat je bijtelt of aanvult, verandert niets aan wat je gebruikte.</p>`}
+        ${list}`}
     </main>
   </div>`;
 }

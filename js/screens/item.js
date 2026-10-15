@@ -47,8 +47,8 @@ export function ItemScreen({ id }) {
 
       ${needsRestock(item) && html`<${StatusBanner} tone="orange" icon="i_warning"
         title=${item.quantity === 0 ? 'Op · bijvullen' : 'Bijvullen'}
-        text=${item.minimum ? `Je hebt er nog ${item.quantity}, minimum is ${item.minimum}. Er zijn er nog ${shortage(item)} nodig.`
-          : 'Je hebt er geen meer. Er is geen minimum ingesteld, dus staat er 1 op de lijst Aanvullen.'} />`}
+        text=${item.minimum ? `Nog ${item.quantity}, minimum ${item.minimum}. Er zijn er ${shortage(item)} nodig.`
+          : 'Er zijn er geen meer.'} />`}
 
       <${Card}>
         <div class="qty-row">
@@ -73,7 +73,7 @@ export function ItemScreen({ id }) {
           <div class="qr-box"><${QrSvg} text=${item.code} size=${120} /></div>
           <div>
             <div class="mono">${item.code}</div>
-            <div class="small faint">Plak dit label op het bakje, toestel of de kabel.</div>
+            <div class="small faint">Plak dit label op het artikel.</div>
           </div>
         </div>
         <div class="btn-row">
@@ -95,11 +95,11 @@ export function ItemScreen({ id }) {
     </main>
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${item.name + ' verwijderen?'}
-      text="Het artikel wordt gewist. Wat je ervan gebruikte, blijft bij Verbruik staan. Dit kan niet ongedaan gemaakt worden."
+      text="Dit kan niet ongedaan gemaakt worden."
       confirmLabel="Verwijderen" onConfirm=${() => { setAskDelete(false); store.delete(item.id); }}
       onDismiss=${() => setAskDelete(false)} />`}
 
-    ${askQuantity != null && html`<${ConfirmDialog} icon="i_edit" title="Aantal instellen" text="Bv. na het tellen van je voorraad."
+    ${askQuantity != null && html`<${ConfirmDialog} icon="i_edit" title="Aantal instellen"
       confirmLabel="Bewaren" onConfirm=${() => { store.setQuantity(item.id, askQuantity); setAskQuantity(null); }}
       onDismiss=${() => setAskQuantity(null)}>
       <${NumberField} label="Aantal" value=${askQuantity} onChange=${setAskQuantity} />
@@ -108,8 +108,8 @@ export function ItemScreen({ id }) {
     ${ready && html`<${ConfirmDialog} icon=${ready.type === 'application/pdf' ? 'i_print' : 'i_share'}
       title=${ready.type === 'application/pdf' ? 'A4-blad met 12 labels' : 'Label klaar'}
       text=${ready.type === 'application/pdf'
-        ? 'Kies in het deelmenu Druk af, of bewaar de PDF in Bestanden.'
-        : 'Deel het naar je labelprinter-app, of bewaar het in Foto\'s of Bestanden.'}
+        ? 'Druk af of bewaar de PDF.'
+        : 'Deel het naar je labelprinter of bewaar het.'}
       confirmLabel="Delen…" dismissLabel="Sluiten"
       onConfirm=${async () => { const f = ready; setReady(null); if ((await shareOrDownload(f)) === 'downloaded') toast('Bestand gedownload'); }}
       onDismiss=${() => setReady(null)} />`}
