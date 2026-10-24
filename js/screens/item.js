@@ -32,11 +32,12 @@ export function ItemScreen({ id }) {
     setReady(file);
   };
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-item">
     <${TopBar} title=${item.name} onBack=${back}>
       <${IconButton} icon="i_edit" label="Wijzigen" onClick=${() => go('/wijzigen/' + item.id)} />
     <//>
     <main class="content">
+      <div class="col">
       <div class="item-head">
         <${ItemIcon} icon=${item.icon} size=${64} />
         <div>
@@ -66,6 +67,8 @@ export function ItemScreen({ id }) {
       <//>
 
       ${item.note && html`<${SectionHeader}>Notitie<//><${Card}><div class="pre">${item.note}</div><//>`}
+      </div>
+      <div class="col">
 
       <${SectionHeader}>QR-code<//>
       <${Card}>
@@ -92,6 +95,7 @@ export function ItemScreen({ id }) {
         <//>`}
 
       <${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskDelete(true)}>Artikel verwijderen…<//>
+      </div>
     </main>
 
     ${askDelete && html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${item.name + ' verwijderen?'}

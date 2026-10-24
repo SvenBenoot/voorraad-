@@ -106,9 +106,10 @@ export function EditScreen({ id, code: presetCode, product }) {
 
   const leave = () => (dirty ? setAskLeave(true) : back());
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-edit">
     <${TopBar} title=${original ? 'Artikel wijzigen' : 'Nieuw artikel'} onBack=${leave} />
     <main class="content ed">
+      <div class="col">
       <div class="ed-hero">
         <button type="button" class="ed-icon" aria-label="Icoon kiezen" onClick=${() => setIconMenu(true)}>
           <${ItemIcon} icon=${icon} size=${96} />
@@ -150,6 +151,8 @@ export function EditScreen({ id, code: presetCode, product }) {
           <${Stepper} value=${minimum} onChange=${setMinimum} label="Minimum" />
         </div>
       </div>
+      </div>
+      <div class="col">
 
       <div class="group">
         <label class="g-row g-field">
@@ -185,6 +188,7 @@ export function EditScreen({ id, code: presetCode, product }) {
         : !original && html`<p class="small faint ed-hint">Heeft het artikel al een QR-label? Scan het met de knop naast de code.</p>`}
 
       ${original && html`<${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskDelete(true)}>Artikel verwijderen…<//>`}
+      </div>
     </main>
     <${Footer}>
       <${Button} kind="secondary" onClick=${leave}>Annuleren<//>

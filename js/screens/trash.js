@@ -17,7 +17,7 @@ export function TrashScreen() {
     toast(r.renewed ? 'Teruggezet met een nieuwe code' : 'Teruggezet');
   };
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-trash">
     <${TopBar} title="Prullenmand" onBack=${back}>
       ${list.length > 0 && html`<${IconButton} icon="i_delete" label="Leeg maken" onClick=${() => setAsk({ kind: 'all' })} />`}
     <//>

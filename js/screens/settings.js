@@ -105,31 +105,31 @@ export function SettingsScreen() {
     }
   };
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-settings">
     <${TopBar} title="Instellingen" onBack=${back} />
     <main class="content">
       ${notice && html`<${StatusBanner} tone=${notice.ok ? 'green' : 'orange'} icon=${notice.ok ? 'i_check_circle' : 'i_error'}
         title=${notice.title} text=${notice.text} onClick=${() => setNotice(null)} />`}
 
-      ${!isStandalone() && html`<${SectionHeader}>Op je beginscherm<//>
+      ${!isStandalone() && html`<section class="set-block set-install"><${SectionHeader}>Op je beginscherm<//>
         <${Card}>
           <div class="card-title">Zet de app op je beginscherm</div>
           <p class="sub">Open het deelmenu <span class="inline-icon"><${Icon} name="i_share" size=${16} /></span> van je browser en kies <b>Zet op beginscherm</b>.</p>
-        <//>`}
+        <//></section>`}
 
-      <${SectionHeader}>Online opslaan<//>
-      <${CloudCard} />
+      <section class="set-block"><${SectionHeader}>Online opslaan<//>
+      <${CloudCard} /></section>
 
-      <${SectionHeader}>Weergave<//>
+      <section class="set-block"><${SectionHeader}>Weergave<//>
       <${Card}>
         <div class="chip-row tight">${themes.map(([k, l]) => html`<${FilterChip} selected=${p.theme === k} onClick=${() => prefs.set({ theme: k })}>${l}<//>`)}</div>
         <div class="setting-row">
           <div><div class="card-title">Piep bij scannen</div><div class="small faint">Toon bij een gelezen code.</div></div>
           <${Switch} checked=${p.scanSound} label="Piep bij scannen" onChange=${(v) => prefs.set({ scanSound: v })} />
         </div>
-      <//>
+      <//></section>
 
-      <${SectionHeader}>Productlijst<//>
+      <section class="set-block"><${SectionHeader}>Productlijst<//>
       <${Card}>
         <div class="card-title">Producten uit het CRM</div>
         <p class="sub">De lijst waaruit je kiest bij een nieuw artikel.</p>
@@ -142,29 +142,29 @@ export function SettingsScreen() {
           }}>Meegeleverde lijst<//>`}
         </div>
         <input ref=${xlsxInput} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange=${onCatalogFile} />
-      <//>
+      <//></section>
 
-      <${SectionHeader}>Exporteren<//>
+      <section class="set-block"><${SectionHeader}>Exporteren<//>
       <${Card}>
         <div class="card-title">Excel-lijst</div>
         <p class="sub">Alle artikels in een Excel-bestand.</p>
         <${Button} icon="i_table" onClick=${() => (data.items.length ? setShare('excel') : noItems('ze exporteren'))}>Excel maken…<//>
-      <//>
+      <//></section>
 
-      <${SectionHeader}>QR-labels<//>
+      <section class="set-block"><${SectionHeader}>QR-labels<//>
       <${Card}>
         <div class="card-title">Alle labels afdrukken</div>
         <p class="sub">Een PDF met een label per artikel, 12 per A4.</p>
         <${Button} icon="i_print" onClick=${() => (data.items.length ? setShare('labels') : noItems('hun labels afdrukken'))}>PDF maken…<//>
-      <//>
+      <//></section>
 
-      <${SectionHeader}>Prullenmand<//>
+      <section class="set-block"><${SectionHeader}>Prullenmand<//>
       <${Card} onClick=${() => go('/prullenmand')}>
         <div class="card-title">Verwijderde artikels</div>
         <p class="small faint">${data.trash.length ? plural(data.trash.length, 'artikel', 'artikels') + ' · 30 dagen bewaard' : 'Leeg'}</p>
-      <//>
+      <//></section>
 
-      <${SectionHeader}>Reservekopie<//>
+      <section class="set-block"><${SectionHeader}>Reservekopie<//>
       <${Card}>
         <div class="card-title">Kopie als bestand</div>
         <p class="sub">Een extra kopie van al je gegevens, als bestand.</p>
@@ -174,13 +174,13 @@ export function SettingsScreen() {
           <${Button} icon="i_restore" onClick=${() => fileInput.current.click()}>Terugzetten…<//>
         </div>
         <input ref=${fileInput} type="file" accept=".zip,application/zip" hidden onChange=${onRestoreFile} />
-      <//>
+      <//></section>
 
-      <${SectionHeader}>Over deze app<//>
+      <section class="set-block"><${SectionHeader}>Over deze app<//>
       <${Card}>
         <div class="card-title">Voorraad</div>
         <div class="sub">Versie ${VERSION} · web-app</div>
-      <//>
+      <//></section>
     </main>
 
     ${share === 'backup' && html`<${BackupDialog} onDismiss=${() => setShare(null)} />`}

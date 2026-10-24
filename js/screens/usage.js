@@ -100,7 +100,7 @@ export function UsageScreen() {
     <//>`);
   });
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-usage">
     <${TopBar} title="Verbruik" onBack=${back}>
       ${rows.length > 0 && html`<${IconButton} icon="i_share" label="Overzicht delen"
         onClick=${async () => { if ((await shareText(listText())) === 'copied') toast('Overzicht gekopieerd'); }} />`}

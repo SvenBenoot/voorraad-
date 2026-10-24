@@ -93,7 +93,7 @@ export function ScanScreen() {
 
   const help = MODES.find((m) => m.key === mode).help;
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-scan">
     <${TopBar} title="Scannen" onBack=${back}>
       ${hasTorch && html`<${IconButton} icon=${torch ? 'i_flash_on' : 'i_flash_off'} label=${torch ? 'Zaklamp uit' : 'Zaklamp aan'}
         cls=${torch ? 'accent' : ''} onClick=${() => setTorch(!torch)} />`}
