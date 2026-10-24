@@ -10,13 +10,20 @@ import { trashItem,
 import { go } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
 
+// Zoeken, filter en merk blijven staan als je een artikel opent en terugkomt.
+const kept = { query: '', filter: 'all', brand: null };
+function useKept(key) {
+  const [v, setV] = useState(kept[key]);
+  return [v, (x) => { kept[key] = x; setV(x); }];
+}
+
 export function HomeScreen() {
   const data = useData();
   const p = usePrefs();
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useKept('query');
+  const [filter, setFilter] = useKept('filter');
   const [sortMenu, setSortMenu] = useState(false);
-  const [brand, setBrand] = useState(null);
+  const [brand, setBrand] = useKept('brand');
   const [brandMenu, setBrandMenu] = useState(false);
   const [askEdit, setAskEdit] = useState(null);
   const [askDelete, setAskDelete] = useState(null);
