@@ -5,9 +5,19 @@ import { useEffect, useState } from '../lib/preact-htm.js';
 const listeners = new Set();
 const current = () => location.hash.replace(/^#/, '') || '/';
 
-window.addEventListener('popstate', () => { for (const fn of listeners) fn(current()); });
+// Terug naar een scherm = op dezelfde plaats verder (zelf bijhouden, de browser doet het niet goed met #-adressen).
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+const scrolls = new Map();
+let wentBack = false;
+window.addEventListener('scroll', () => { scrolls.set(current(), window.scrollY); }, { passive: true });
+/** Waar het scherm moet beginnen: bovenaan, of na Terug waar je was. */
+export const scrollFor = (path) => (wentBack ? scrolls.get(path) ?? 0 : 0);
+
+window.addEventListener('popstate', () => { wentBack = true; for (const fn of listeners) fn(current()); });
 
 export function go(path, { replace = false } = {}) {
+  wentBack = false;
+  scrolls.set(current(), window.scrollY);
   const depth = (history.state?.depth ?? 0) + (replace ? 0 : 1);
   if (replace) history.replaceState({ depth }, '', '#' + path);
   else history.pushState({ depth }, '', '#' + path);

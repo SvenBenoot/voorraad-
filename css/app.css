@@ -500,3 +500,44 @@ p { margin: 4px 0; }
 .brand-filter.on { color: var(--accent); background: var(--accent-bg); }
 
 .icon-pick { padding: 4px 12px 12px; }
+
+/* ---- toegankelijkheid en bediening (ui-ux-review 1.17) */
+
+/* Duidelijke focusrand voor wie met een toetsenbord werkt; bij tikken blijft hij weg. */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card:focus-visible, .banner:focus-visible, .pick-tile:focus-visible, .menu-item:focus-visible { outline-offset: 3px; }
+/* Invoervelden hebben al een eigen focusstijl (rand of lijn in de accentkleur). */
+input:focus-visible, textarea:focus-visible { outline: none; }
+
+/* Alles wat je kan aantikken, toont dat ook met de muis. */
+.clickable, .chip-row .fchip, [role="button"] { cursor: pointer; }
+.banner.clickable:active { filter: brightness(.97); }
+
+/* Kleine knopjes: het vlak om op te tikken is minstens 44 px, ook al ziet de knop er kleiner uit. */
+.icon-btn.small::after, .pick-del::after, .toast-action::after { content: ""; position: absolute; inset: -6px; }
+.toast-action { position: relative; }
+.btn-ghost { min-height: 44px; }
+
+/* Cijfers in kolommen springen niet heen en weer bij het tellen. */
+.pick-amount b, .batch-n, .move b, .qd-num, .badge { font-variant-numeric: tabular-nums; }
+
+/* Met een muis: lichte reactie bij erover gaan. Op een gsm niet, daar blijft die anders hangen. */
+@media (hover: hover) and (pointer: fine) {
+  .card.clickable:hover, .banner.clickable:hover { filter: brightness(.98); }
+  .icon-btn:hover:not(:disabled), .btn-ghost:hover:not(:disabled) { background: var(--accent-bg); }
+  .btn-secondary:hover:not(:disabled), .fchip:hover, .step:hover:not(:disabled):not(.step-add) { background: var(--hover); }
+  .btn-primary:hover:not(:disabled), .step-add:hover:not(:disabled) { filter: brightness(1.05); }
+  .menu-item:hover, .picker-row:hover, .g-btn:hover, .pick-tile:hover:not(.on) { background: var(--hover); }
+  :root[data-theme="dark"] .card.clickable:hover { filter: brightness(1.08); }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .card.clickable:hover, :root:not([data-theme="light"]) .banner.clickable:hover { filter: brightness(1.08); }
+}
+
+/* Minder beweging als dat in het toestel zo ingesteld is. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+.pick-amount .step { position: relative; }
+.pick-amount .step::after { content: ""; position: absolute; inset: -5px; }

@@ -75,9 +75,15 @@ export function Footer({ children }) {
 
 // ---- kaarten en labels
 
+/** Aantikbaar vlak dat ook met het toetsenbord werkt (Tab, dan Enter of spatie). */
+const pressable = (onClick) => (onClick ? {
+  role: 'button', tabIndex: 0, onClick,
+  onKeyDown: (e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(e); } },
+} : {});
+
 export function Card({ children, selected, onClick, cls = '', pad }) {
   return html`<div class=${`card ${selected ? 'selected' : ''} ${onClick ? 'clickable' : ''} ${cls}`}
-    style=${pad != null ? `padding:${pad}px` : null} onClick=${onClick}>${children}</div>`;
+    style=${pad != null ? `padding:${pad}px` : null} ...${pressable(onClick)}>${children}</div>`;
 }
 
 export const SectionHeader = ({ children }) => html`<div class="section">${children}</div>`;
@@ -94,7 +100,7 @@ const PILL = { EMPTY: 'Op', LOW: 'Bijvullen', OK: 'In orde', NO_MINIMUM: 'Geen m
 export const StatusPill = ({ tone, children }) => html`<span class=${'pill tone-' + tone}>${children}</span>`;
 
 export function StatusBanner({ tone, icon, title, text, onClick, trailing }) {
-  return html`<div class=${`banner tone-${tone} ${onClick ? 'clickable' : ''}`} onClick=${onClick}>
+  return html`<div class=${`banner tone-${tone} ${onClick ? 'clickable' : ''}`} ...${pressable(onClick)}>
     <span class="banner-icon"><${Icon} name=${icon} size=${20} /></span>
     <span class="banner-body"><b>${title}</b>${text && html`<span>${text}</span>`}</span>
     ${trailing}
@@ -152,14 +158,14 @@ export function SearchField({ value, onInput, hint = 'Zoeken' }) {
 
 export function TextField({ label, value, onInput, hint, help, error, multiline, mono, autoFocus, type = 'text', autocomplete }) {
   const props = {
-    value, placeholder: hint, class: (error ? 'err ' : '') + (mono ? 'mono' : ''), autocomplete,
+    value, placeholder: hint, class: (error ? 'err ' : '') + (mono ? 'mono' : ''), autocomplete, 'aria-invalid': error ? 'true' : null,
     onInput: (e) => onInput(e.currentTarget.value), autoFocus,
   };
   return html`<label class="field">
     <span class="field-label">${label}</span>
     ${multiline ? html`<textarea rows="3" ...${props}></textarea>` : html`<input type=${type} enterkeyhint="done"
       onKeyDown=${(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} ...${props} />`}
-    ${error ? html`<span class="field-help tone-text-red">${error}</span>` : help && html`<span class="field-help">${help}</span>`}
+    ${error ? html`<span class="field-help tone-text-red" role="alert">${error}</span>` : help && html`<span class="field-help">${help}</span>`}
   </label>`;
 }
 

@@ -1,11 +1,11 @@
 // ---- Start van de app
 // Laadt de gegevens, kiest het thema en toont het scherm dat bij het adres hoort.
-import { html, render, useEffect } from '../lib/preact-htm.js';
+import { html, render, useEffect, useLayoutEffect } from '../lib/preact-htm.js';
 import { store } from './store.js';
 import { cloud } from './cloud.js';
 import { LoginScreen } from './cloud-card.js';
 import { usePrefs, ToastHost } from './ui.js';
-import { useRoute } from './router.js';
+import { useRoute, scrollFor } from './router.js';
 import { unlockAudio } from './scanner.js';
 import { HomeScreen } from './screens/home.js';
 import { ItemScreen } from './screens/item.js';
@@ -44,8 +44,8 @@ function App() {
     else root.dataset.theme = p.theme === 'DARK' ? 'dark' : 'light';
   }, [p.theme]);
 
-  // Nieuw scherm: bovenaan beginnen.
-  useEffect(() => { window.scrollTo(0, 0); }, [path]);
+  // Nieuw scherm: bovenaan beginnen; met Terug: waar je was.
+  useLayoutEffect(() => { window.scrollTo(0, scrollFor(path)); }, [path]);
 
   // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
   return html`${p.cloudUser ? screenFor(path) : html`<${LoginScreen} />`}<${ToastHost} />`;
