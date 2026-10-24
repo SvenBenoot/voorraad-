@@ -28,9 +28,9 @@ export function useDesktop() {
 // ---- zijbalk
 
 const NAV = [
-  { path: '/', icon: 'i_inventory', label: 'Overzicht', match: ['', 'artikel', 'wijzigen', 'maken'] },
+  { path: '/', icon: 'i_inventory', label: 'Overzicht', match: ['', 'artikel', 'wijzigen'] },
   { path: '/scan', icon: 'i_scan', label: 'Scannen', match: ['scan'] },
-  { path: '/nieuw', icon: 'i_add', label: 'Nieuw artikel', match: ['nieuw'] },
+  { path: '/nieuw', icon: 'i_add', label: 'Nieuw artikel', match: ['nieuw', 'maken'] },
   { path: '/aanvullen', icon: 'i_checklist', label: 'Aanvullen', match: ['aanvullen'], badge: true },
   { path: '/verbruik', icon: 'i_history', label: 'Verbruik', match: ['verbruik'] },
   { path: '/prullenmand', icon: 'i_delete', label: 'Prullenmand', match: ['prullenmand'] },

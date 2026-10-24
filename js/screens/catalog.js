@@ -50,17 +50,21 @@ function ProductSearch({ onPick, onOwned }) {
 }
 
 export function CatalogScreen() {
-  return html`<div class="screen">
+  return html`<div class="screen scr-catalog">
     <${TopBar} title="Nieuw artikel" onBack=${back} />
     <main class="content">
+      <div class="col">
       <button type="button" class="card clickable cat-own" onClick=${() => go('/maken')}>
         <span class="cat-own-icon"><${Icon} name="i_add" size=${26} /></span>
         <span class="g-label">Zelf maken<small>Naam, merk, icoon en aantal zelf ingeven</small></span>
         ${chev}
       </button>
+      </div>
 
+      <div class="col">
       <${SectionHeader}>Uit de productlijst<//>
       <${ProductSearch} onPick=${(p) => go('/maken/' + p.i)} onOwned=${(it) => go('/artikel/' + it.id)} />
+      </div>
     </main>
   </div>`;
 }

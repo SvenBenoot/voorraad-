@@ -67,7 +67,7 @@ export function RestockScreen() {
     <//>`);
   });
 
-  return html`<div class="screen">
+  return html`<div class="screen scr-restock">
     <${TopBar} title="Aanvullen" onBack=${back}>
       ${rows.length > 0 && html`<${IconButton} icon="i_share" label="Lijst delen"
         onClick=${async () => { if ((await shareText(listText())) === 'copied') toast('Lijst gekopieerd'); }} />`}

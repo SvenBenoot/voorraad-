@@ -153,7 +153,7 @@ p { margin: 4px 0; }
 .btn-row > .btn { flex: 1; padding: 0 12px; min-width: 0; }
 .btn-row.wrap { flex-wrap: wrap; }
 .btn-row.wrap > .btn { flex: 1 1 auto; }
-.content > .btn-ghost { align-self: flex-start; }
+.content > .btn-ghost, .col > .btn-ghost { align-self: flex-start; }
 
 .icon-btn { width: 44px; height: 44px; border: 0; background: none; color: var(--accent); border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center; position: relative; flex: none; }
@@ -639,3 +639,52 @@ button.kpi:active { transform: scale(.99); }
 }
 /* Smal pc-venster: minimum staat al in de status, zo krijgt de artikelnaam meer plaats. */
 @media (max-width: 1199px) { .tbl .col-min { display: none; } }
+
+/* ---- pc-weergave van de andere schermen (1.19): volle breedte, in kolommen.
+   De extra blokken (.col, .set-block) tellen op de gsm niet mee, zodat daar alles blijft zoals het was. */
+
+.col, .set-block { display: contents; }
+
+.desk-main > .screen { max-width: none; margin: 0; }
+.desk .content { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px 32px 32px; }
+.desk .bar-row { height: 64px; padding-left: 20px; padding-right: 20px; }
+.desk .bar-title { font-size: 20px; }
+.desk .footer { justify-content: flex-end; padding-left: 32px; padding-right: 32px; }
+.desk .footer > .btn { flex: 0 0 auto; min-width: 200px; }
+
+/* Twee kolommen: artikel, wijzigen/nieuw, productlijst */
+.desk .scr-item .content, .desk .scr-edit .content, .desk .scr-catalog .content {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 32px; align-items: start; }
+.desk .scr-catalog .content { grid-template-columns: 340px minmax(0, 1fr); }
+.desk .col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.desk .scr-edit .col { gap: 14px; }
+.desk .col > .section:first-child { margin-top: 0; }
+.desk .scr-item .col > .btn-ghost, .desk .scr-edit .col > .btn-ghost { align-self: flex-start; }
+.desk .scr-catalog .group { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.desk .scr-catalog .g-row + .g-row { border-top: 0; }
+.desk .scr-catalog .cat-row { border-bottom: 1px solid var(--line); }
+
+/* Kaarten naast elkaar: aanvullen, verbruik, prullenmand */
+.desk .scr-restock .content, .desk .scr-usage .content, .desk .scr-trash .content {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px 16px; align-content: start; align-items: start; }
+.desk .scr-restock .content > :not(.pick), .desk .scr-usage .content > :not(.usage-row), .desk .scr-trash .content > .empty {
+  grid-column: 1 / -1; }
+.desk .scr-usage .day-nav { max-width: 480px; }
+.desk .scr-restock .content > .card:first-child, .desk .scr-usage .content > .card { max-width: 640px; }
+
+/* Instellingen: blokken in een raster */
+.desk .scr-settings .content { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; align-content: start; align-items: start; }
+.desk .scr-settings .content > .banner { grid-column: 1 / -1; }
+.desk .set-block { display: flex; flex-direction: column; gap: 8px; }
+.desk .set-block > .section { margin: 0; }
+.desk .set-install { display: none; }
+
+/* Scannen: camera groot links, keuze en resultaat rechts */
+.desk .scr-scan { display: grid; grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: auto auto 1fr; min-height: 100dvh; column-gap: 0; }
+.desk .scr-scan > .bar { grid-column: 1 / -1; }
+.desk .scr-scan > .scanner { grid-column: 1; grid-row: 2 / span 2; margin: 24px 0 24px 32px; min-height: 0; height: calc(100dvh - 120px); }
+.desk .scr-scan > .pad-x { grid-column: 2; grid-row: 2; padding: 24px 32px 0 24px; }
+.desk .scr-scan > .pad-x .chip-row { margin: 0; padding: 0; flex-wrap: wrap; }
+.desk .scr-scan > .scan-bottom { grid-column: 2; grid-row: 3; padding: 16px 32px 24px 24px; align-self: start; }
+.desk .scr-scan .batch { max-height: calc(100dvh - 380px); }
+.desk .scr-catalog .col:first-child { position: sticky; top: 88px; }
