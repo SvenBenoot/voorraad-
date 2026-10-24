@@ -567,7 +567,7 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 /* Andere schermen: leesbaar smal, in het midden van de ruimte naast de zijbalk. */
 .desk-main > .screen { max-width: 860px; margin: 0 auto; }
 
-.dash { max-width: 1880px; margin: 0 auto; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
+.dash { max-width: none; margin: 0; padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
 .dash-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .dash-title { margin: 0 0 2px; font-size: 28px; font-weight: 700; line-height: 1.2; }
 .dash-actions { display: flex; gap: 10px; }
@@ -646,7 +646,7 @@ button.kpi:active { transform: scale(.99); }
 .col, .set-block { display: contents; }
 
 .desk-main > .screen { max-width: none; margin: 0; }
-.desk .content { width: 100%; max-width: 1600px; margin: 0 auto; padding: 24px 32px 32px; }
+.desk .content { width: 100%; max-width: none; margin: 0; padding: 24px 32px 32px; }
 .desk .bar-row { height: 64px; padding-left: 20px; padding-right: 20px; }
 .desk .bar-title { font-size: 20px; }
 .desk .footer { justify-content: flex-end; padding-left: 32px; padding-right: 32px; }
@@ -664,13 +664,26 @@ button.kpi:active { transform: scale(.99); }
 .desk .scr-catalog .g-row + .g-row { border-top: 0; }
 .desk .scr-catalog .cat-row { border-bottom: 1px solid var(--line); }
 
-/* Kaarten naast elkaar: aanvullen, verbruik, prullenmand */
-.desk .scr-restock .content, .desk .scr-usage .content, .desk .scr-trash .content {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px 16px; align-content: start; align-items: start; }
-.desk .scr-restock .content > :not(.pick), .desk .scr-usage .content > :not(.usage-row), .desk .scr-trash .content > .empty {
-  grid-column: 1 / -1; }
-.desk .scr-usage .day-nav { max-width: 480px; }
-.desk .scr-restock .content > .card:first-child, .desk .scr-usage .content > .card { max-width: 640px; }
+/* Aanvullen, verbruik, prullenmand: alles even breed onder elkaar, de lijst als tabel over de volle breedte */
+.desk .scr-restock .content, .desk .scr-usage .content, .desk .scr-trash .content { gap: 20px; }
+.desk .scr-restock .progress-head .bignum { font-size: 44px !important; }
+.tbl .col-check { width: 52px; padding-right: 0; }
+button.check { background: none; padding: 0; color: inherit; cursor: pointer; }
+button.check.on { background: var(--brand-diag); color: var(--on-brand); }
+.tbl .col-x { width: 52px; text-align: right; }
+.tbl .done-row td { background: color-mix(in srgb, var(--accent-bg) 55%, transparent); }
+.row-link.done { color: var(--sub); text-decoration: line-through; }
+.tbl td.num b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.used-n { color: var(--accent); }
+.cell-actions { text-align: right; white-space: nowrap; }
+.cell-actions .btn { min-height: 40px; min-width: 0; margin-left: 8px; }
+.usage-head { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.usage-head .day-nav { gap: 4px; }
+.usage-head .day-label { flex: none; min-width: 220px; font-size: 20px; }
+.usage-totals { display: flex; gap: 40px; }
+.usage-totals div { display: flex; align-items: baseline; gap: 8px; }
+.usage-totals b { font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.usage-totals span { color: var(--sub); }
 
 /* Instellingen: blokken in een raster */
 .desk .scr-settings .content { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; align-content: start; align-items: start; }

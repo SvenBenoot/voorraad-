@@ -13,6 +13,22 @@ export function useData() {
   return d;
 }
 
+// ---- pc of gsm
+
+const WIDE = '(min-width: 1024px)';
+
+/** true op een breed scherm (pc, of tablet liggend). Volgt mee als het venster groter of kleiner wordt. */
+export function useDesktop() {
+  const mq = window.matchMedia(WIDE);
+  const [wide, setWide] = useState(mq.matches);
+  useEffect(() => {
+    const on = () => setWide(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
 export function usePrefs() {
   const [p, setP] = useState(prefs.value);
   useEffect(() => prefs.subscribe(setP), []);

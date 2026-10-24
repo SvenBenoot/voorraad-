@@ -6,13 +6,14 @@ import { Icon } from '../icons.js';
 import { store, collator, categoryOf, needsRestock, fullName } from '../store.js';
 import {
   useData, TopBar, IconButton, Footer, Button, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, StepButton,
-  ConfirmDialog, Dialog, DialogButtons, SearchField, toast,
+  ConfirmDialog, Dialog, DialogButtons, SearchField, toast, useDesktop,
 } from '../ui.js';
 import { shareText } from '../files.js';
 import { go, back } from '../router.js';
 
 export function RestockScreen() {
   const data = useData();
+  const desktop = useDesktop();
   const [picker, setPicker] = useState(false);
   const [askFinish, setAskFinish] = useState(false);
 
@@ -67,6 +68,53 @@ export function RestockScreen() {
     <//>`);
   });
 
+  // Pc: één tabel over de volle breedte, met de categorie als kolom.
+  const table = html`<section class="panel dash-table"><div class="table-wrap">
+    <table class="tbl">
+      <caption class="sr-only">Aanvullen</caption>
+      <thead><tr>
+        <th scope="col" class="col-check"><span class="sr-only">In je bak</span></th>
+        <th scope="col">Artikel</th><th scope="col">Categorie</th><th scope="col">Plaats</th>
+        <th scope="col" class="num">Nu</th><th scope="col" class="num">Minimum</th><th scope="col" class="num">Meenemen</th>
+        <th scope="col"><span class="sr-only">Van de lijst halen</span></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(([line, it]) => html`<tr key=${it.id} class=${'row' + (line.done ? ' done-row' : '')} onClick=${() => store.togglePick(it.id)}>
+          <td class="col-check">
+            <button type="button" role="checkbox" aria-checked=${line.done} aria-label=${'In je bak: ' + it.name}
+              class=${'check' + (line.done ? ' on' : '')} onClick=${(e) => { e.stopPropagation(); store.togglePick(it.id); }}>
+              ${line.done && html`<${Icon} name="i_check" size=${18} />`}
+            </button>
+          </td>
+          <td>
+            <div class="cell-item">
+              <${ItemIcon} icon=${it.icon} size=${36} />
+              <div class="cell-name">
+                <a href=${'#/artikel/' + it.id} class=${'row-link' + (line.done ? ' done' : '')}
+                  onClick=${(e) => { e.preventDefault(); e.stopPropagation(); go('/artikel/' + it.id); }}>${it.name}</a>
+                ${it.brand && html`<span class="small faint">${it.brand}</span>`}
+              </div>
+            </div>
+          </td>
+          <td>${categoryOf(data, it).name}</td>
+          <td>${it.location || html`<span class="faint">–</span>`}</td>
+          <td class=${'num ' + (needsRestock(it) ? (it.quantity === 0 ? 'tone-text-red' : 'tone-text-orange') : '')}><b>${it.quantity}</b></td>
+          <td class="num">${it.minimum || html`<span class="faint">–</span>`}</td>
+          <td class="num">
+            <div class="cell-qty" onClick=${(e) => e.stopPropagation()}>
+              <${StepButton} add=${false} size=${32} disabled=${line.amount <= 1} label=${'Eén minder meenemen: ' + it.name}
+                onClick=${() => store.setPickAmount(it.id, line.amount - 1)} />
+              <b>${line.amount}</b>
+              <${StepButton} add=${true} size=${32} label=${'Eén meer meenemen: ' + it.name} onClick=${() => store.setPickAmount(it.id, line.amount + 1)} />
+            </div>
+          </td>
+          <td class="col-x">${!needsRestock(it) && html`<button type="button" class="icon-btn small" aria-label=${'Van de lijst halen: ' + it.name}
+            onClick=${(e) => { e.stopPropagation(); store.removePick(it.id); }}><${Icon} name="i_close" size=${18} /></button>`}</td>
+        </tr>`)}
+      </tbody>
+    </table>
+  </div></section>`;
+
   return html`<div class="screen scr-restock">
     <${TopBar} title="Aanvullen" onBack=${back}>
       ${rows.length > 0 && html`<${IconButton} icon="i_share" label="Lijst delen"
@@ -83,7 +131,7 @@ export function RestockScreen() {
           </div>
           <div class="progress"><i style=${`width:${frac * 100}%`}></i></div>
         <//>
-        ${list}
+        ${desktop ? table : list}
 `}
     </main>
     <${Footer}>
