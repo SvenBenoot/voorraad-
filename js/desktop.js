@@ -1,7 +1,7 @@
 // ---- Pc-weergave
 // Op een breed scherm (vanaf 1024 px) een zijbalk met de schermen en een overzicht over de volle breedte:
 // kerncijfers, een tabel met alle artikels en rechts wat aandacht vraagt. Op een gsm verandert er niets.
-import { html, useEffect, useState } from '../lib/preact-htm.js';
+import { html, useState } from '../lib/preact-htm.js';
 import { Icon } from './icons.js';
 import { store, prefs, collator, categoryOf, needsRestock, shortage, status, SORT_MODES } from './store.js';
 import {
@@ -11,19 +11,7 @@ import { SyncButton, SyncDialog } from './cloud-card.js';
 import { usageOn, startOfDay } from './screens/usage.js';
 import { go, home } from './router.js';
 
-const WIDE = '(min-width: 1024px)';
-
-/** true op een breed scherm (pc, of tablet liggend). Volgt mee als het venster groter of kleiner wordt. */
-export function useDesktop() {
-  const mq = window.matchMedia(WIDE);
-  const [wide, setWide] = useState(mq.matches);
-  useEffect(() => {
-    const on = () => setWide(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return wide;
-}
+export { useDesktop } from './ui.js';
 
 // ---- zijbalk
 
