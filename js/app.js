@@ -16,8 +16,9 @@ import { SettingsScreen } from './screens/settings.js';
 import { UsageScreen } from './screens/usage.js';
 import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
+import { useDesktop, DesktopShell, DashboardScreen } from './desktop.js';
 
-function screenFor(path) {
+function screenFor(path, desktop) {
   const [, a, b] = path.split('/');
   switch (a) {
     case 'artikel': return html`<${ItemScreen} key=${'a' + b} id=${b} />`;
@@ -30,13 +31,14 @@ function screenFor(path) {
     case 'verbruik': return html`<${UsageScreen} />`;
     case 'prullenmand': return html`<${TrashScreen} />`;
     case 'instellingen': return html`<${SettingsScreen} />`;
-    default: return html`<${HomeScreen} />`;
+    default: return desktop ? html`<${DashboardScreen} />` : html`<${HomeScreen} />`;
   }
 }
 
 function App() {
   const path = useRoute();
   const p = usePrefs();
+  const desktop = useDesktop();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -48,7 +50,10 @@ function App() {
   useLayoutEffect(() => { window.scrollTo(0, scrollFor(path)); }, [path]);
 
   // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
-  return html`${p.cloudUser ? screenFor(path) : html`<${LoginScreen} />`}<${ToastHost} />`;
+  // Op een breed scherm: zijbalk en overzicht over de volle breedte (zie desktop.js).
+  const screen = !p.cloudUser ? html`<${LoginScreen} />`
+    : desktop ? html`<${DesktopShell} path=${path}>${screenFor(path, true)}<//>` : screenFor(path, false);
+  return html`${screen}<${ToastHost} />`;
 }
 
 // Tik naast een invoerveld: toetsenbord dicht (zoals in de Android-app).
