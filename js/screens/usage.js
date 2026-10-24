@@ -12,7 +12,7 @@ import { go, back } from '../router.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const UNDO_WINDOW = 5 * 60 * 1000;
-const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+export const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 /** Een dag verder of terug, ook rond de overgang naar zomer- of wintertijd. */
 const shiftDay = (day, n) => startOfDay(day + n * DAY + 12 * 60 * 60 * 1000);
 
@@ -25,7 +25,7 @@ function dayLabel(day) {
 }
 
 /** Gebruikte stuks per artikel op [day]: { itemId: aantal }. */
-function usageOn(data, day) {
+export function usageOn(data, day) {
   const end = shiftDay(day, 1);
   const open = {}; // per artikel: verlagingen van die dag die nog door een correctie geschrapt kunnen worden
   const moves = data.movements.filter((m) => m.time >= day && m.time < end).sort((a, b) => a.time - b.time);
