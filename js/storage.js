@@ -17,8 +17,20 @@ function db() {
   return dbPromise;
 }
 
-async function tx(store, mode, fn) {
-  const d = await db();
+// Foto's bij notities (sinds 1.21) in een eigen database: zo hoeft de bestaande niet omgebouwd te worden.
+let photoPromise;
+function photoDb() {
+  photoPromise ??= new Promise((resolve, reject) => {
+    const req = indexedDB.open('voorraad-fotos', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('photos'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return photoPromise;
+}
+
+async function tx(store, mode, fn, open = db) {
+  const d = await open();
   return new Promise((resolve, reject) => {
     const t = d.transaction(store, mode);
     const s = t.objectStore(store);
@@ -42,6 +54,11 @@ export const localStore = {
 
   /** Foto's zijn er sinds 1.6 niet meer: wat er nog staat opruimen, dat spaart plaats op de iPhone. */
   clearOldPhotos: () => tx('photos', 'readwrite', (s) => { s.clear(); }),
+
+  /** Foto's bij notities (als data-URL), los van de gegevens zodat die klein blijven. */
+  loadPhoto: (id) => tx('photos', 'readonly', (s) => s.get(id), photoDb),
+  savePhoto: (id, data) => tx('photos', 'readwrite', (s) => s.put(data, id), photoDb),
+  deletePhotos: (ids) => tx('photos', 'readwrite', (s) => { for (const id of ids) s.delete(id); }, photoDb),
 
   /** Vraag de browser om de gegevens niet zomaar op te ruimen bij plaatsgebrek. */
   async keep() { try { await navigator.storage?.persist?.(); } catch { /* niet erg */ } },
