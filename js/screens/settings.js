@@ -1,5 +1,6 @@
 // ---- Instellingen
-// Weergave, productlijst, Excel, labels, reservekopie en "Over deze app". Wijzigingen worden meteen bewaard.
+// Weergave, projecten, productlijst, Excel, labels, prullenmand, reservekopie en "Over deze app".
+// Wijzigingen worden meteen bewaard.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
 import { store, prefs, collator } from '../store.js';
@@ -12,6 +13,7 @@ import { back, go } from '../router.js';
 import { VERSION } from '../version.js';
 import { loadCatalog, resetCatalog } from '../catalog.js';
 import { CloudCard } from '../cloud-card.js';
+import { showDeletedProjects } from './projects.js';
 
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
@@ -92,6 +94,10 @@ export function SettingsScreen() {
   };
 
   const themes = [['SYSTEM', 'Volgens systeem'], ['LIGHT', 'Licht'], ['DARK', 'Donker']];
+  const starts = [['/start', 'Keuzescherm'], ['/', 'Inventaris'], ['/projecten', 'Projecten']];
+  const projectSorts = [['RECENT', 'Laatst gewijzigd'], ['NAME', 'Naam']];
+  const deletedProjects = data.projects.filter((x) => x.deletedAt).length;
+  const liveCount = (raw) => (raw.projects ?? []).filter((x) => x && !x.deletedAt).length;
   const noItems = (what) => setNotice({ ok: false, title: 'Nog geen artikels', text: `Voeg eerst artikels toe, dan kan je ${what}.` });
 
   const onRestoreFile = async (e) => {
@@ -122,11 +128,21 @@ export function SettingsScreen() {
 
       <section class="set-block"><${SectionHeader}>Weergave<//>
       <${Card}>
+        <div class="set-label">Thema</div>
         <div class="chip-row tight">${themes.map(([k, l]) => html`<${FilterChip} selected=${p.theme === k} onClick=${() => prefs.set({ theme: k })}>${l}<//>`)}</div>
+        <div class="set-label">Openen met</div>
+        <div class="chip-row tight">${starts.map(([k, l]) => html`<${FilterChip} selected=${p.startAt === k} onClick=${() => prefs.set({ startAt: k })}>${l}<//>`)}</div>
         <div class="setting-row">
           <div><div class="card-title">Piep bij scannen</div><div class="small faint">Toon bij een gelezen code.</div></div>
           <${Switch} checked=${p.scanSound} label="Piep bij scannen" onChange=${(v) => prefs.set({ scanSound: v })} />
         </div>
+      <//></section>
+
+      <section class="set-block"><${SectionHeader}>Projecten<//>
+      <${Card}>
+        <div class="set-label">Sorteren</div>
+        <div class="chip-row tight">${projectSorts.map(([k, l]) => html`<${FilterChip} selected=${p.projectSort === k} onClick=${() => prefs.set({ projectSort: k })}>${l}<//>`)}</div>
+        <p class="small faint">Vastgezette projecten staan altijd bovenaan.</p>
       <//></section>
 
       <section class="set-block"><${SectionHeader}>Productlijst<//>
@@ -162,12 +178,16 @@ export function SettingsScreen() {
       <${Card} onClick=${() => go('/prullenmand')}>
         <div class="card-title">Verwijderde artikels</div>
         <p class="small faint">${data.trash.length ? plural(data.trash.length, 'artikel', 'artikels') + ' · 30 dagen bewaard' : 'Leeg'}</p>
+      <//>
+      <${Card} onClick=${showDeletedProjects}>
+        <div class="card-title">Verwijderde projecten</div>
+        <p class="small faint">${deletedProjects ? plural(deletedProjects, 'project', 'projecten') + ' · 30 dagen bewaard' : 'Leeg'}</p>
       <//></section>
 
       <section class="set-block"><${SectionHeader}>Reservekopie<//>
       <${Card}>
         <div class="card-title">Kopie als bestand</div>
-        <p class="sub">Een extra kopie van al je gegevens, als bestand.</p>
+        <p class="sub">Artikels, projecten, notities en instellingen in één bestand.</p>
         <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt.'}</p>
         <div class="btn-row wrap">
           <${Button} kind="primary" icon="i_backup" onClick=${() => setShare('backup')}>Reservekopie maken…<//>
@@ -192,13 +212,19 @@ export function SettingsScreen() {
       text="Druk af of bewaar de PDF." button="Delen…" onDismiss=${() => setShare(null)} />`}
 
     ${restore && html`<${ConfirmDialog} kind="danger" icon="i_restore" title="Reservekopie terugzetten?"
-      text=${`Je huidige artikels worden vervangen door de ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')} uit de kopie. Dit kan niet ongedaan gemaakt worden.`}
+      text=${'projects' in restore.raw
+        ? `Alles wordt vervangen door de kopie: ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')} en ${plural(liveCount(restore.raw), 'project', 'projecten')}. Dit kan niet ongedaan gemaakt worden.`
+        : `Je huidige artikels worden vervangen door de ${plural(restore.raw.items?.length ?? 0, 'artikel', 'artikels')} uit de kopie. Je projecten blijven staan. Dit kan niet ongedaan gemaakt worden.`}
       confirmLabel="Terugzetten" onConfirm=${async () => {
         const r = restore;
         setRestore(null);
         try {
           await store.replaceAll(r.raw);
-          setNotice({ ok: true, title: 'Reservekopie teruggezet', text: `${plural(store.data.items.length, 'artikel is', 'artikels zijn')} hersteld.` });
+          if (r.settings) prefs.set(r.settings);
+          const n = store.data.projects.filter((x) => !x.deletedAt).length;
+          setNotice({ ok: true, title: 'Reservekopie teruggezet', text: 'projects' in r.raw
+            ? `${plural(store.data.items.length, 'artikel', 'artikels')} en ${plural(n, 'project', 'projecten')} hersteld.`
+            : `${plural(store.data.items.length, 'artikel is', 'artikels zijn')} hersteld.` });
         } catch {
           setNotice({ ok: false, title: 'Terugzetten mislukt', text: 'Probeer opnieuw.' });
         }

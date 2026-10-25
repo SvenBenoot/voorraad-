@@ -10,10 +10,15 @@
 //   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel, at = servertijd)
 //   voorraad/data/projects/{id}    één document per project (sinds 1.20; deletedAt = in de prullenmand, at = servertijd)
 //   voorraad/data/notes/{id}       één document per notitie of taak, met projectId (zelfde velden deletedAt en at)
+//   Definitief gewist (artikel, project of notitie): het document blijft nog 30 dagen staan met purged = tijd van wissen.
+//   Een ander toestel leest enkel wat sinds de vorige keer wijzigde, en zou een echt verwijderd document niet merken.
 //   voorraad/data/photos/{id}      foto's bij notities, enkel in 1.21.0; wordt leeggemaakt (dropOldPhotos)
 // Wie erin mag, staat in de Firestore-regels (enkel Svens e-mailadres).
 import { localStore } from './storage.js';
-import { store, normalize, normProject, normNote, prefs, setSyncer, OTHER, MAX_MOVEMENTS } from './store.js';
+import { store, normalize, normProject, normNote, prefs, setSyncer, OTHER, MAX_MOVEMENTS, TRASH_DAYS } from './store.js';
+
+const DAY = 24 * 3600 * 1000;
+const KEEP = TRASH_DAYS * DAY;
 
 const config = {
   apiKey: 'AIzaSyCpAoYnxmogU_QtiCz7EMjTTNfh0aly04o',
@@ -172,8 +177,9 @@ function send(prev, next) {
     // Logboekregels krijgen de servertijd mee, zodat een ander toestel enkel de nieuwe hoeft op te halen.
     // Elke regel krijgt de servertijd (at) mee; artikels ook een deletedAt (leeg als ze niet verwijderd zijn),
     // zodat terugzetten het veld ook online wist.
+    // purged: null, zodat iets wat elders gewist was en hier toch weer bewaard wordt (bv. uit een reservekopie) terugkomt.
     const stamp = coll === movements ? (v) => ({ ...v, at: F.serverTimestamp() })
-      : (v) => ({ ...v, deletedAt: v.deletedAt ?? null, at: F.serverTimestamp() });
+      : (v) => ({ ...v, deletedAt: v.deletedAt ?? null, purged: null, at: F.serverTimestamp() });
     // merge: wijzigden twee toestellen een ander veld van hetzelfde artikel, dan blijven beide wijzigingen.
     for (const [id, v] of y) {
       if (x.has(id) && same(x.get(id), v)) continue;
@@ -181,7 +187,19 @@ function send(prev, next) {
       op.key = flightKey(coll, id);
       list.push(op);
     }
-    for (const id of x.keys()) if (!y.has(id)) list.push((batch) => batch.delete(F.doc(coll, id)));
+    const now = Date.now();
+    for (const [id, old] of x) {
+      if (y.has(id)) continue;
+      // Definitief gewist: een gewone verwijdering ziet een ander toestel niet (dat leest enkel wat wijzigde), dus een
+      // merkteken achterlaten. Wat na 30 dagen vanzelf uit de prullenmand valt, doet elk toestel zelf: gewoon weg.
+      if (coll === movements || (old.deletedAt && now - old.deletedAt > KEEP)) {
+        list.push((batch) => batch.delete(F.doc(coll, id)));
+        continue;
+      }
+      const op = (batch) => batch.set(F.doc(coll, id), { ...old, deletedAt: old.deletedAt || now, purged: now, at: F.serverTimestamp() });
+      op.key = flightKey(coll, id);
+      list.push(op);
+    }
   }
   // Max. 500 schrijfacties per keer, de servertijd telt extra mee: dus ruim eronder blijven.
   for (const group of [ops, later]) {
@@ -202,6 +220,12 @@ let unsubscribe = [];
 let waitingSince = null; // gegevens van vóór de eerste wijziging die nog niet verstuurd kon worden
 const pending = { meta: false, items: false, movements: false, projects: false, notes: false };
 
+/** Ids die online een merkteken "definitief gewist" kregen en hier nog staan. */
+function purgedIn(changes, coll, byId) {
+  return changes.filter((c) => c.type !== 'removed' && !c.doc.metadata.hasPendingWrites && c.doc.data().purged
+    && !busy(coll, c.doc.id) && byId.has(c.doc.id)).map((c) => c.doc.id);
+}
+
 function sortMoves(list) { return list.sort((x, y) => x.time - y.time).slice(-MAX_MOVEMENTS); }
 
 /**
@@ -212,7 +236,8 @@ function listen() {
   stop();
   const { F, meta, items, movements } = fb;
   const opts = { includeMetadataChanges: true };
-  const DAY = 24 * 3600 * 1000;
+  // Eén keer na deze versie alles volledig inlezen: wat vroeger elders definitief gewist werd, verdwijnt dan ook hier.
+  if ((prefs.value.syncV || 0) < 2) prefs.set({ itemsFullAt: 0, projectsFullAt: 0, notesFullAt: 0, syncV: 2 });
   // Lezen kost per document. Daarom haalt de app artikels en logboek normaal enkel op wat sinds de vorige keer
   // wijzigde (op servertijd). Eén keer per dag, of als er nog geen startpunt is, leest ze alles volledig in: dan
   // merkt ze ook wat elders definitief verdween, en krijgen oudere documenten hun servertijd.
@@ -224,6 +249,16 @@ function listen() {
   const track = (key, snap) => {
     pending[key] = snap.metadata.hasPendingWrites;
     setStatus({ pending: Object.values(pending).some(Boolean) });
+  };
+
+  // Merktekens van definitief gewiste documenten: ouder dan 30 dagen mogen ze echt weg (bij een volledige lezing).
+  const dropMarks = (coll, snap) => {
+    const old = snap.docs.filter((s) => !s.metadata.hasPendingWrites && s.data().purged && Date.now() - s.data().purged > KEEP);
+    for (let i = 0; i < old.length; i += 200) {
+      const batch = F.writeBatch(fb.db);
+      for (const s of old.slice(i, i + 200)) batch.delete(s.ref);
+      batch.commit().catch(lost);
+    }
   };
 
   const restore = [];
@@ -241,6 +276,7 @@ function listen() {
         for (const s of old.slice(i, i + 200)) batch.set(F.doc(items, s.id), { at: F.serverTimestamp() }, { merge: true });
         batch.commit().catch(lost);
       }
+      if (key === 'items') dropMarks(items, snap);
     }
     const changes = snap.docChanges(opts);
     // Echo van je eigen, nog niet bevestigde wijziging: staat al goed in de app, dus niets te doen.
@@ -266,13 +302,16 @@ function listen() {
         for (const id of live) restore.push([id, byId.get(id)]);
         gone = gone.filter((id) => !live.includes(id));
       }
+      // Definitief gewist op een ander toestel (met merkteken): dat was bewust, dus altijd volgen.
+      if (key === 'items') gone.push(...purgedIn(changes, coll, byId));
       for (const id of gone) { byId.delete(id); changed = true; }
       for (const c of changes) {
         if (c.type === 'removed') continue;
         if (c.doc.metadata.hasPendingWrites) continue;
-        const { at, ...v } = c.doc.data();
+        const { at, purged, ...v } = c.doc.data();
         if (at && key === 'movements') seen = Math.max(seen, at.toMillis());
         if (at && key === 'items') seenItems = Math.max(seenItems, at.toMillis());
+        if (purged) continue;
         if (v.deletedAt == null) delete v.deletedAt;
         if (stale(coll, c.doc.id, v, byId.get(c.doc.id))) continue;
         if (!same(byId.get(c.doc.id), v)) { byId.set(c.doc.id, v); changed = true; }
@@ -304,7 +343,7 @@ function listen() {
     return F.onSnapshot(fullRead ? coll : F.query(coll, F.where('at', '>', since(seenAt))), opts, (snap) => {
       track(key, snap);
       const full = !done && !snap.metadata.fromCache;
-      if (full) { done = true; prefs.set({ [fullKey]: Date.now() }); }
+      if (full) { done = true; prefs.set({ [fullKey]: Date.now() }); dropMarks(coll, snap); }
       const changes = snap.docChanges(opts);
       if (!full && !changes.some((c) => (c.type === 'removed' && !busy(coll, c.doc.id)) || !c.doc.metadata.hasPendingWrites)) return;
       const back = [];
@@ -324,11 +363,13 @@ function listen() {
           for (const id of live) back.push([id, byId.get(id)]);
           gone = gone.filter((id) => !live.includes(id));
         }
+        gone.push(...purgedIn(changes, coll, byId));
         for (const id of gone) { byId.delete(id); changed = true; }
         for (const c of changes) {
           if (c.type === 'removed' || c.doc.metadata.hasPendingWrites) continue;
-          const { at, ...raw } = c.doc.data();
+          const { at, purged, ...raw } = c.doc.data();
           if (at) seenAt = Math.max(seenAt, at.toMillis());
+          if (purged) continue;
           if (raw.id == null || (key === 'notes' && raw.projectId == null)) continue;
           const v = norm(raw);
           if (stale(coll, c.doc.id, v, byId.get(c.doc.id))) continue;
@@ -439,11 +480,17 @@ async function firstSync() {
   }
   const [its, mvs, prj, nts] = await Promise.all([F.getDocsFromServer(items), F.getDocsFromServer(movements),
     F.getDocsFromServer(projects), F.getDocsFromServer(notes)]);
+  // Definitief gewist op een ander toestel: niet meer tonen, en ook hier weghalen, tenzij het hier later nog gewijzigd werd.
+  const purged = new Map();
+  const keep = (docs) => docs.map((s) => s.data()).filter((v) => { if (v.purged) purged.set(v.id, v.purged); return !v.purged; });
   const remote = normalize({
-    ...m.data(), items: its.docs.map((s) => s.data()), movements: sortMoves(mvs.docs.map((s) => s.data())),
-    projects: prj.docs.map((s) => s.data()), notes: nts.docs.map((s) => s.data()),
+    ...m.data(), items: keep(its.docs), movements: sortMoves(mvs.docs.map((s) => s.data())),
+    projects: keep(prj.docs), notes: keep(nts.docs),
   });
-  const merged = merge(remote, store.data);
+  const alive = (x) => !purged.has(x.id) || (x.deletedAt || x.updatedAt || 0) > purged.get(x.id);
+  const local = store.data;
+  const merged = merge(remote, { ...local, items: local.items.filter(alive), trash: local.trash.filter(alive),
+    projects: local.projects.filter(alive), notes: local.notes.filter(alive) });
   store.applyRemote(() => merged);
   push(remote, merged);
   const last = (docs) => Math.max(0, ...docs.map((s) => s.data().at?.toMillis?.() ?? 0));
