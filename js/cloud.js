@@ -10,8 +10,7 @@
 //   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel, at = servertijd)
 //   voorraad/data/projects/{id}    één document per project (sinds 1.20; deletedAt = in de prullenmand, at = servertijd)
 //   voorraad/data/notes/{id}       één document per notitie of taak, met projectId (zelfde velden deletedAt en at)
-//   voorraad/data/photos/{id}      één foto bij een notitie (data-URL, max. ± 650 kB); niet beluisterd, enkel opgehaald
-//                                  als een toestel ze nog niet heeft (sinds 1.21)
+//   voorraad/data/photos/{id}      foto's bij notities, enkel in 1.21.0; wordt leeggemaakt (dropOldPhotos)
 // Wie erin mag, staat in de Firestore-regels (enkel Svens e-mailadres).
 import { localStore } from './storage.js';
 import { store, normalize, normProject, normNote, prefs, setSyncer, OTHER, MAX_MOVEMENTS } from './store.js';
@@ -372,40 +371,26 @@ function listen() {
   ];
   setSyncer(push);
   setStatus({ state: 'on', error: '' });
-  flushPhotos();
-  readyNow?.();
+  dropOldPhotos();
 }
 
-// ---- foto's bij notities
+// ---- foto's bij notities (enkel in 1.21.0): wat daarvan nog online of op het toestel staat, één keer opruimen
 
-let readyNow;
-const ready = new Promise((resolve) => { readyNow = resolve; });
-
-/** Foto's die nog online moeten (of weg moeten) en die bewaard zijn van toen er nog geen verbinding was. */
-async function flushPhotos() {
-  const { F, db, photos } = fb;
-  const up = prefs.value.photoQueue || [];
-  const down = prefs.value.photoDelete || [];
-  if (!up.length && !down.length) return;
-  prefs.set({ photoQueue: [], photoDelete: [] });
-  for (const id of up) {
-    const data = await localStore.loadPhoto(id).catch(() => null);
-    // Firestore bewaart de opdracht zelf tot er internet is; mislukt ze echt, dan later opnieuw.
-    if (data) F.setDoc(F.doc(photos, id), { data, at: F.serverTimestamp() }).catch(() => queue('photoQueue', [id]));
-  }
-  if (down.length) {
-    const batch = F.writeBatch(db);
-    for (const id of down.slice(0, 400)) batch.delete(F.doc(photos, id));
-    batch.commit().catch(() => queue('photoDelete', down));
-  }
+async function dropOldPhotos() {
+  if (prefs.value.photosCleared) return;
+  localStore.dropNotePhotos();
+  try {
+    const { F, db, photos } = fb;
+    const snap = await F.getDocsFromServer(photos);
+    for (let i = 0; i < snap.docs.length; i += 400) {
+      const batch = F.writeBatch(db);
+      for (const d of snap.docs.slice(i, i + 400)) batch.delete(d.ref);
+      await batch.commit();
+    }
+    prefs.set({ photosCleared: true });
+  } catch { /* geen verbinding: volgende keer opnieuw */ }
 }
 
-function queue(key, ids) {
-  const have = new Set(prefs.value[key] || []);
-  prefs.set({ [key]: [...have, ...ids.filter((id) => !have.has(id))] });
-}
-
-const live = () => fb && unsubscribe.length > 0;
 
 function stop() {
   setSyncer(null);
@@ -495,32 +480,6 @@ function fail(e) {
 export const cloud = {
   get status() { return status; },
 
-  /** Foto online zetten (of onthouden tot de verbinding er is). */
-  putPhotos(ids) {
-    if (!ids.length) return;
-    queue('photoQueue', ids);
-    if (live()) flushPhotos();
-  },
-
-  deletePhotos(ids) {
-    if (!ids.length) return;
-    const up = new Set(ids);
-    prefs.set({ photoQueue: (prefs.value.photoQueue || []).filter((id) => !up.has(id)) });
-    queue('photoDelete', ids);
-    if (live()) flushPhotos();
-  },
-
-  /** Een foto die dit toestel nog niet heeft, online ophalen (null als ze er niet is). */
-  async getPhoto(id) {
-    await Promise.race([ready, new Promise((r) => setTimeout(r, 15000))]);
-    if (!fb) return null;
-    try {
-      const snap = await fb.F.getDoc(fb.F.doc(fb.photos, id));
-      return snap.exists() ? snap.data().data ?? null : null;
-    } catch {
-      return null;
-    }
-  },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 
   /** Bij het opstarten, als je op dit toestel ingelogd was. */

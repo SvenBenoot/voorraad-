@@ -14,7 +14,6 @@ const T = (x, y, s, t, w = 700) => `<text x="${x}" y="${y}" font-size="${s}" fon
 const SVG = {
   undo: L('M9 6L4.5 10.5 9 15') + L('M4.5 10.5H15a4.5 4.5 0 0 1 0 9h-3'),
   redo: L('M15 6l4.5 4.5L15 15') + L('M19.5 10.5H9a4.5 4.5 0 0 0 0 9h3'),
-  para: L('M10 20V4.5M15 20V4.5M17.5 4.5H9.5a4 4 0 0 0 0 8H10'),
   h2: T(2.5, 17, 13, 'H') + T(13.2, 19, 9, '2'),
   bold: T(6.5, 17.5, 15, 'B', 800),
   italic: T(8, 17.5, 15, 'I', 600).replace('fill=', 'font-style="italic" fill='),
@@ -132,8 +131,7 @@ export function RichEditor({ value, onChange, placeholder, autoFocus }) {
         ${B('redo', 'Opnieuw', () => run(() => exec('redo')))}
       </div>
       <div class="tb-group">
-        ${B('para', 'Gewone tekst', () => block('p'))}
-        ${B('h2', 'Titel', () => block('h2'), state.h2)}
+        ${B('h2', 'Titel', () => block(state.h2 ? 'p' : 'h2'), state.h2)}
       </div>
       <div class="tb-group">
         ${B('bold', 'Vet', () => run(() => exec('bold')), state.bold)}

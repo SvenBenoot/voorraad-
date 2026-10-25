@@ -3,12 +3,11 @@
 // Zelfde stijl als de inventaris: kaarten, pillen, het merkverloop en de knoppen uit ui.js.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
 import { Icon } from './icons.js';
-import { store, collator, fold, daysUntil, dayKey, sortTasks, liveProjects, noteOrder, MAX_PHOTOS, PROJECT_COLORS } from './store.js';
+import { store, collator, fold, daysUntil, dayKey, sortTasks, liveProjects, noteOrder, PROJECT_COLORS } from './store.js';
 import { Card, Button, Switch, TextField, Dialog, DialogButtons, ConfirmDialog, toast, plural } from './ui.js';
 import { shareText } from './files.js';
 import { htmlOf, toPlain, toggleCheck, checkCount } from './rich.js';
 import { RichEditor } from './editor.js';
-import { addPhoto, commitPhotos, discardPhotos, Thumb } from './photos.js';
 
 export const chev = html`<svg class="chev" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -135,7 +134,7 @@ export function NoteRow({ note: n, onEdit, onOpen, projectName, handle }) {
   const toggle = (e) => { e.stopPropagation(); store.toggleNote(n.id); };
   const checks = checkCount(n.html);
   const meta = (n.important && !n.done) || (n.due && !n.done) || projectName || checks.total > 0;
-  const label = n.text.split('\n')[0] || 'Foto';
+  const label = n.text.split('\n')[0] || (n.task ? 'Taak' : 'Notitie');
   return html`<div class=${'note-row' + (n.done ? ' done' : '') + (n.important && !n.done ? ' important' : '') + (onOpen ? ' opens' : '')}
       onClick=${onOpen} role=${onOpen ? 'button' : null} tabIndex=${onOpen ? '0' : null}
       onKeyDown=${onOpen && ((e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } })}>
@@ -147,14 +146,10 @@ export function NoteRow({ note: n, onEdit, onOpen, projectName, handle }) {
     <div class="note-body">
       ${onOpen ? html`<div class=${'note-text clamp2' + (n.done ? ' done' : '')}>${label}</div>`
         : html`<${NoteContent} note=${n} />`}
-      ${!onOpen && n.photos.length > 0 && html`<div class="note-photos">
-        ${n.photos.map((pid) => html`<${Thumb} key=${pid} id=${pid} size=${56} />`)}
-      </div>`}
       ${meta && html`<div class="note-meta">
         ${n.important && !n.done && html`<span class="pill small-pill tone-orange"><${Icon} name="star" size=${14} />Belangrijk</span>`}
         ${n.due && !n.done && html`<${DuePill} due=${n.due} />`}
         ${checks.total > 0 && html`<span class=${'chip' + (checks.done === checks.total ? ' chip-ok' : '')}><${Icon} name="i_checklist" size=${14} />${checks.done}/${checks.total}</span>`}
-        ${onOpen && n.photos.length > 0 && html`<span class="chip"><${Icon} name="camera_alt" size=${14} />${n.photos.length}</span>`}
         ${projectName && html`<span class="chip"><${Icon} name="folder" size=${14} />${projectName}</span>`}
       </div>`}
     </div>
@@ -327,50 +322,26 @@ export function NoteDialog({ note, projectId: forProject, kind = 'task', onDismi
   const [due, setDue] = useState(note?.due ?? '');
   const [important, setImportant] = useState(note?.important ?? false);
   const [projectId, setProjectId] = useState(note?.projectId ?? forProject);
-  const [photos, setPhotos] = useState(note?.photos ?? []);
-  const [busy, setBusy] = useState(0);
-  const added = useRef([]); // foto's die in dit venster bijkwamen
   const others = note ? liveProjects(store.data).sort((a, b) => collator.compare(a.name, b.name)) : [];
   const text = toPlain(body);
-  const empty = !text.trim() && photos.length === 0;
+  const empty = !text.trim();
 
-  const pick = async (e) => {
-    const files = [...e.currentTarget.files].slice(0, MAX_PHOTOS - photos.length);
-    e.currentTarget.value = '';
-    for (const f of files) {
-      setBusy((b) => b + 1);
-      try {
-        const id = await addPhoto(f);
-        added.current.push(id);
-        setPhotos((l) => (l.length < MAX_PHOTOS ? [...l, id] : l));
-      } catch {
-        toast('Foto lukte niet');
-      }
-      setBusy((b) => b - 1);
-    }
-  };
-
-  const cancel = () => { discardPhotos(added.current); onDismiss(); };
   const save = async () => {
-    if (empty || busy) return;
-    const fresh = added.current.filter((id) => photos.includes(id));
-    discardPhotos(added.current.filter((id) => !photos.includes(id)));
-    const fields = { text, html: body, task, due: task ? due : '', important, photos };
+    if (empty) return;
+    const fields = { text, html: body, task, due: task ? due : '', important };
     if (note) {
       const patch = { ...fields, projectId };
       if (task !== note.task) { patch.order = noteOrder(task); patch.done = false; }
       await store.editNote(note.id, patch);
-      commitPhotos(fresh, note.photos.filter((id) => !photos.includes(id)));
       if (projectId !== note.projectId) toast('Verplaatst naar ' + (store.project(projectId)?.name ?? 'ander project'));
     } else {
       await store.addNote(projectId, fields);
-      commitPhotos(fresh, []);
     }
     onDismiss();
   };
-  const remove = () => { discardPhotos(added.current); onDismiss(); trashNotes([note.id]); };
+  const remove = () => { onDismiss(); trashNotes([note.id]); };
 
-  return html`<${Dialog} onDismiss=${cancel} cls="note-dialog" sticky>
+  return html`<${Dialog} onDismiss=${onDismiss} cls="note-dialog" sticky>
     <div class="dialog-body">
       <div class="seg" role="group" aria-label="Soort">
         <button type="button" class=${task ? 'on' : ''} aria-pressed=${task} onClick=${() => setTask(true)}>
@@ -379,14 +350,6 @@ export function NoteDialog({ note, projectId: forProject, kind = 'task', onDismi
           <${Icon} name="sticky_note_2" size=${18} />Notitie</button>
       </div>
       <${RichEditor} value=${body} onChange=${setBody} placeholder=${task ? 'Wat moet er gebeuren?' : 'Notitie'} autoFocus=${!note && !touch()} />
-      <div class="photo-row">
-        ${photos.map((id) => html`<${Thumb} key=${id} id=${id} size=${64}
-          onRemove=${() => setPhotos((l) => l.filter((x) => x !== id))} />`)}
-        ${photos.length < MAX_PHOTOS && html`<label class=${'photo-add' + (busy ? ' busy' : '')}>
-          <${Icon} name="camera_alt" size=${22} /><span>${busy ? 'Even…' : 'Foto'}</span>
-          <input type="file" accept="image/*" multiple disabled=${busy > 0} onChange=${pick} />
-        </label>`}
-      </div>
       ${task && html`<${DuePicker} due=${due} onPick=${setDue} />`}
       <div class="setting-row"><div><b>Belangrijk</b></div><${Switch} checked=${important} onChange=${setImportant} label="Belangrijk" /></div>
       ${others.length > 1 && html`<label class="field">
@@ -401,8 +364,8 @@ export function NoteDialog({ note, projectId: forProject, kind = 'task', onDismi
       </div>`}
     </div>
     <${DialogButtons}>
-      <${Button} onClick=${cancel}>Annuleren<//>
-      <${Button} kind="primary" disabled=${empty || busy > 0} onClick=${save}>${note ? 'Bewaren' : 'Toevoegen'}<//>
+      <${Button} onClick=${onDismiss}>Annuleren<//>
+      <${Button} kind="primary" disabled=${empty} onClick=${save}>${note ? 'Bewaren' : 'Toevoegen'}<//>
     <//>
   <//>`;
 }
@@ -491,7 +454,7 @@ export function projectText(p, notes) {
   if (p.note) lines.push(p.note);
   const line = (mark, n) => {
     const extra = [n.important ? 'belangrijk' : '', n.due && !n.done ? 'tegen ' + dateOf(n.due).toLocaleDateString('nl-BE') : ''].filter(Boolean).join(', ');
-    const [first = 'Foto', ...rest] = n.text.split('\n').filter((l) => l.trim());
+    const [first = '…', ...rest] = n.text.split('\n').filter((l) => l.trim());
     return [`${mark} ${first}${extra ? ` (${extra})` : ''}`, ...rest.map((l) => '   ' + l)].join('\n');
   };
   if (tasks.length) lines.push('', 'Te doen', ...tasks.map((n) => line('☐', n)));
