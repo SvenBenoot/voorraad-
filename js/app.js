@@ -18,9 +18,9 @@ import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
 import { StartScreen } from './screens/start.js';
 import { ProjectsScreen, ProjectScreen } from './screens/projects.js';
-import { useDesktop, DesktopShell, DashboardScreen } from './desktop.js';
+import { useDesktop, DesktopShell } from './desktop.js';
 
-function screenFor(path, desktop) {
+function screenFor(path) {
   const [, a, b] = path.split('/');
   switch (a) {
     case 'artikel': return html`<${ItemScreen} key=${'a' + b} id=${b} />`;
@@ -36,7 +36,7 @@ function screenFor(path, desktop) {
     case 'start': return html`<${StartScreen} />`;
     case 'projecten': return html`<${ProjectsScreen} />`;
     case 'project': return html`<${ProjectScreen} key=${'p' + b} id=${b} />`;
-    default: return desktop ? html`<${DashboardScreen} />` : html`<${HomeScreen} />`;
+    default: return html`<${HomeScreen} />`;
   }
 }
 
@@ -55,9 +55,9 @@ function App() {
   useLayoutEffect(() => { window.scrollTo(0, scrollFor(path)); }, [path]);
 
   // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
-  // Op een breed scherm: zijbalk en overzicht over de volle breedte (zie desktop.js); het keuzescherm zonder zijbalk.
+  // Op een breed scherm: zijbalk links en dezelfde schermen als op de gsm (zie desktop.js); het keuzescherm zonder zijbalk.
   const screen = !p.cloudUser ? html`<${LoginScreen} />`
-    : desktop && path !== '/start' ? html`<${DesktopShell} path=${path}>${screenFor(path, true)}<//>` : screenFor(path, desktop);
+    : desktop && path !== '/start' ? html`<${DesktopShell} path=${path}>${screenFor(path)}<//>` : screenFor(path);
   return html`${screen}<${ToastHost} />`;
 }
 

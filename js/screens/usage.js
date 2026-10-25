@@ -6,7 +6,7 @@
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
 import { collator, categoryOf, OTHER, fullName } from '../store.js';
-import { useData, TopBar, IconButton, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, toast, plural, useDesktop } from '../ui.js';
+import { useData, TopBar, IconButton, Card, SectionHeader, EmptyState, ItemIcon, BigNumber, toast, plural } from '../ui.js';
 import { shareText } from '../files.js';
 import { go, back } from '../router.js';
 
@@ -50,7 +50,6 @@ export function usageOn(data, day) {
 
 export function UsageScreen() {
   const data = useData();
-  const desktop = useDesktop();
   const today = startOfDay(Date.now());
   // null = vandaag, zodat het overzicht na middernacht vanzelf op de nieuwe dag springt.
   const [picked, setDay] = useState(null);
@@ -110,54 +109,6 @@ export function UsageScreen() {
           <${Icon} name="i_back" />
         </button>
       </div>`;
-
-  // Pc: dag en totaal samen bovenaan, daaronder één tabel over de volle breedte.
-  if (desktop) {
-    return html`<div class="screen scr-usage">
-      <${TopBar} title="Verbruik" onBack=${back}>
-        ${rows.length > 0 && html`<${IconButton} icon="i_share" label="Overzicht delen"
-          onClick=${async () => { if ((await shareText(listText())) === 'copied') toast('Overzicht gekopieerd'); }} />`}
-      <//>
-      <main class="content">
-        <section class="panel usage-head">
-          ${dayNav}
-          <div class="usage-totals">
-            <div><b>${total}</b><span>${total === 1 ? 'stuk gebruikt' : 'stuks gebruikt'}</span></div>
-            <div><b>${rows.length}</b><span>${rows.length === 1 ? 'artikel' : 'artikels'}</span></div>
-          </div>
-        </section>
-        ${rows.length === 0 ? html`<${EmptyState} icon="i_history" title=${day === today ? 'Vandaag nog niets gebruikt' : 'Niets gebruikt op deze dag'}
-            text="Wat je gebruikt, verschijnt hier per dag." />`
-          : html`<section class="panel dash-table"><div class="table-wrap">
-            <table class="tbl">
-              <caption class="sr-only">Gebruikt op ${dayLabel(day)}</caption>
-              <thead><tr>
-                <th scope="col">Artikel</th><th scope="col">Categorie</th><th scope="col">Plaats</th>
-                <th scope="col" class="num">Nu in voorraad</th><th scope="col" class="num">Gebruikt</th>
-              </tr></thead>
-              <tbody>
-                ${rows.map(([it, n]) => html`<tr key=${it.id} class=${it.deleted ? '' : 'row'} onClick=${it.deleted ? null : () => go('/artikel/' + it.id)}>
-                  <td>
-                    <div class="cell-item">
-                      <${ItemIcon} icon=${it.icon} size=${36} />
-                      <div class="cell-name">
-                        ${it.deleted ? html`<span class="row-link">${it.name}</span>`
-                          : html`<a href=${'#/artikel/' + it.id} class="row-link" onClick=${(e) => { e.preventDefault(); e.stopPropagation(); go('/artikel/' + it.id); }}>${it.name}</a>`}
-                        ${it.brand && html`<span class="small faint">${it.brand}</span>`}
-                      </div>
-                    </div>
-                  </td>
-                  <td>${categoryOf(data, it).name}</td>
-                  <td>${it.location || html`<span class="faint">–</span>`}</td>
-                  <td class="num">${it.deleted ? html`<span class="faint">–</span>` : it.quantity}</td>
-                  <td class="num"><b class="used-n">−${n}</b></td>
-                </tr>`)}
-              </tbody>
-            </table>
-          </div></section>`}
-      </main>
-    </div>`;
-  }
 
   return html`<div class="screen scr-usage">
     <${TopBar} title="Verbruik" onBack=${back}>
