@@ -3,7 +3,7 @@
 // Zelfde stijl als de inventaris: kaarten, pillen, het merkverloop en de knoppen uit ui.js.
 import { html, useEffect, useRef, useState } from '../lib/preact-htm.js';
 import { Icon } from './icons.js';
-import { store, collator, fold, daysUntil, dayKey, sortTasks, liveProjects, noteOrder, PROJECT_COLORS } from './store.js';
+import { store, prefs, collator, fold, daysUntil, dayKey, sortTasks, liveProjects, noteOrder, PROJECT_COLORS } from './store.js';
 import { Card, Button, Switch, TextField, Dialog, DialogButtons, ConfirmDialog, toast, plural } from './ui.js';
 import { shareText } from './files.js';
 import { htmlOf, toPlain, toggleCheck, checkCount } from './rich.js';
@@ -31,9 +31,11 @@ export function projectStats(data) {
   return map;
 }
 
-/** Vastgezette eerst, dan wat het laatst gewijzigd is. */
+/** Vastgezette eerst, dan wat het laatst gewijzigd is (of op naam, zie Instellingen). */
 export function sortProjects(list, stats) {
-  return [...list].sort((a, b) => (b.pinned - a.pinned) || (stats.get(b.id)?.last ?? 0) - (stats.get(a.id)?.last ?? 0)
+  const byName = prefs.value.projectSort === 'NAME';
+  return [...list].sort((a, b) => (b.pinned - a.pinned)
+    || (byName ? 0 : (stats.get(b.id)?.last ?? 0) - (stats.get(a.id)?.last ?? 0))
     || collator.compare(a.name, b.name));
 }
 

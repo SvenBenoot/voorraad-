@@ -2,7 +2,7 @@
 // De reservekopie is een zip met voorraad.json (zelfde vorm als in de vroegere Android-app),
 // zodat je van Android naar iPhone kan overstappen en terug.
 import { zipSync, unzipSync, strToU8, strFromU8 } from '../lib/fflate.js';
-import { store, collator, categoryOf, shortage } from './store.js';
+import { store, prefs, collator, categoryOf, shortage } from './store.js';
 import { qrMatrix } from './qr.js';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -45,8 +45,16 @@ export async function shareText(text) {
 
 // ---- reservekopie
 
+// Instellingen die mee in de reservekopie gaan (niet: login en sync-tijden, die horen bij het toestel).
+const BACKUP_PREFS = ['theme', 'scanSound', 'sort', 'startAt', 'projectSort'];
+
+/** Artikels, prullenmand, logboek, projecten en notities (voorraad.json) en je instellingen (instellingen.json). */
 export async function makeBackup() {
-  const files = { 'voorraad.json': strToU8(JSON.stringify(store.data, null, 2)) };
+  const settings = Object.fromEntries(BACKUP_PREFS.map((k) => [k, prefs.value[k]]));
+  const files = {
+    'voorraad.json': strToU8(JSON.stringify(store.data, null, 2)),
+    'instellingen.json': strToU8(JSON.stringify(settings, null, 2)),
+  };
   const zipped = zipSync(files, { level: 6 });
   return new File([zipped], `voorraad-${stamp()}.zip`, { type: 'application/zip' });
 }
@@ -57,7 +65,12 @@ export async function readBackup(file) {
   const json = entries['voorraad.json'];
   if (!json) throw new Error('Geen voorraad.json in dit bestand');
   // Foto's in oudere kopieën (map fotos/) worden genegeerd.
-  return { raw: JSON.parse(strFromU8(json)) };
+  let settings = null;
+  try {
+    const s = entries['instellingen.json'] && JSON.parse(strFromU8(entries['instellingen.json']));
+    if (s && typeof s === 'object') settings = Object.fromEntries(BACKUP_PREFS.filter((k) => k in s && typeof s[k] === typeof prefs.value[k]).map((k) => [k, s[k]]));
+  } catch { /* zonder instellingen: niet erg */ }
+  return { raw: JSON.parse(strFromU8(json)), settings };
 }
 
 // ---- Excel

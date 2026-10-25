@@ -1,7 +1,7 @@
 // ---- Start van de app
 // Laadt de gegevens, kiest het thema en toont het scherm dat bij het adres hoort.
 import { html, render, useEffect, useLayoutEffect } from '../lib/preact-htm.js';
-import { store } from './store.js';
+import { store, prefs } from './store.js';
 import { cloud } from './cloud.js';
 import { LoginScreen } from './cloud-card.js';
 import { usePrefs, ToastHost } from './ui.js';
@@ -75,7 +75,7 @@ document.addEventListener('pointerdown', (e) => {
     document.getElementById('app').innerHTML = '<p style="padding:24px">De gegevens konden niet geladen worden. Open de app opnieuw.</p>';
     return;
   }
-  startAtChooser(); // de app opent op het keuzescherm (Inventaris of Projecten)
+  startAtChooser(prefs.value.startAt); // keuzescherm, of Inventaris/Projecten (Instellingen)
   render(html`<${App} />`, document.getElementById('app'));
   // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
   cloud.start();

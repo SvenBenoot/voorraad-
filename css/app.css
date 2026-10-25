@@ -294,6 +294,9 @@ p { margin: 4px 0; }
 .switch.on i { transform: translateX(20px); }
 .setting-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
 .setting-row > div { flex: 1; }
+/* Kleine titel boven een rij keuzes in Instellingen (Thema, Openen met, Sorteren). */
+.set-label { font-size: 13px; font-weight: 600; color: var(--sub); margin: 0 0 8px; }
+.set-label ~ .set-label { margin-top: 16px; }
 .inline-icon { display: inline-block; vertical-align: -3px; color: var(--accent); }
 .inline-icon .icon { display: inline; }
 

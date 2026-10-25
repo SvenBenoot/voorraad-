@@ -28,10 +28,14 @@ export function go(path, { replace = false } = {}) {
   for (const fn of listeners) fn(path);
 }
 
-/** Bij het openen van de app (zonder adres): eerst het keuzescherm. */
-export function startAtChooser() {
+/**
+ * Bij het openen van de app (zonder adres): eerst het keuzescherm. Kies je in Instellingen meteen Inventaris of
+ * Projecten ([target]), dan opent dat, met het keuzescherm eronder (Terug brengt je daar).
+ */
+export function startAtChooser(target = '/start') {
   if (location.hash && location.hash !== '#') return;
   history.replaceState({ depth: 0, base: true }, '', '#/start');
+  if (target === '/' || target === '/projecten') history.pushState({ depth: 1, base: true }, '', '#' + target);
 }
 
 /** Terug naar het vorige scherm; is er geen (bv. app net geopend op een artikel), dan naar [fallback]. */

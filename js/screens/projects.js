@@ -17,6 +17,13 @@ import {
 
 // Zoekterm en filter blijven staan als je een project opent en terugkomt.
 const kept = { query: '', filter: 'active' };
+/** Naar de verwijderde projecten (vanuit Instellingen). */
+export function showDeletedProjects() {
+  kept.filter = 'deleted';
+  kept.query = '';
+  go('/projecten');
+}
+
 function useKept(key) {
   const [v, setV] = useState(kept[key]);
   return [v, (x) => { kept[key] = x; setV(x); }];
