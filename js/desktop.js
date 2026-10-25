@@ -20,7 +20,7 @@ const NAV = [
   { path: '/aanvullen', icon: 'i_checklist', label: 'Aanvullen', match: ['aanvullen'], badge: true },
   { path: '/verbruik', icon: 'i_history', label: 'Verbruik', match: ['verbruik'] },
   { path: '/prullenmand', icon: 'i_delete', label: 'Prullenmand', match: ['prullenmand'] },
-  { path: '/instellingen', icon: 'i_settings', label: 'Instellingen', match: ['instellingen'] },
+  { path: '/instellingen', icon: 'i_settings', label: 'Instellingen', match: ['instellingen', 'verwijderde-projecten'] },
 ];
 
 // Projecten: overzicht, dan de actieve projecten zelf (vastgezette eerst), zodat je snel wisselt.
@@ -52,7 +52,7 @@ function ProjectNav({ section, id }) {
     })}
     ${active.length > 12 && html`<a href="#/projecten" class="side-item side-more" onClick=${(e) => { e.preventDefault(); home('/projecten'); }}>
       <span></span><span>Alle projecten</span></a>`}
-    ${item('/instellingen', html`<${Icon} name="i_settings" size=${22} />`, 'Instellingen', section === 'instellingen')}
+    ${item('/instellingen', html`<${Icon} name="i_settings" size=${22} />`, 'Instellingen', section === 'instellingen' || section === 'verwijderde-projecten')}
     ${creating && html`<${ProjectDialog} onDismiss=${() => setCreating(false)} onCreated=${(x) => go('/project/' + x.id)} />`}`;
 }
 
@@ -62,7 +62,7 @@ function Sidebar({ path }) {
   const [syncInfo, setSyncInfo] = useState(false);
   const [, section = '', id] = path.split('/');
   if (PROJECT_PATHS.includes(section)) lastModule = 'projects';
-  else if (section !== 'instellingen') lastModule = 'inventory';
+  else if (section !== 'instellingen' && section !== 'verwijderde-projecten') lastModule = 'inventory';
   const projects = lastModule === 'projects';
   const restock = data.items.filter(needsRestock).length;
   const switchTo = (to) => { if (to === 'projects' ? !projects : projects) home(to === 'projects' ? '/projecten' : '/'); };

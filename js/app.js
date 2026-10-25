@@ -17,7 +17,7 @@ import { UsageScreen } from './screens/usage.js';
 import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
 import { StartScreen } from './screens/start.js';
-import { ProjectsScreen, ProjectScreen } from './screens/projects.js';
+import { ProjectsScreen, ProjectScreen, ProjectTrashScreen } from './screens/projects.js';
 import { useDesktop, DesktopShell } from './desktop.js';
 
 function screenFor(path) {
@@ -35,6 +35,7 @@ function screenFor(path) {
     case 'instellingen': return html`<${SettingsScreen} />`;
     case 'start': return html`<${StartScreen} />`;
     case 'projecten': return html`<${ProjectsScreen} />`;
+    case 'verwijderde-projecten': return html`<${ProjectTrashScreen} />`;
     case 'project': return html`<${ProjectScreen} key=${'p' + b} id=${b} />`;
     default: return html`<${HomeScreen} />`;
   }

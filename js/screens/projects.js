@@ -1,5 +1,6 @@
 // ---- Projecten
-// Lijst met projecten (zoeken in projecten én notities, filter Actief/Afgerond/Verwijderd) en het scherm van één
+// Lijst met projecten (zoeken in projecten én notities, filter Actief/Afgerond/Alles), de verwijderde projecten
+// (via Instellingen > Prullenmand) en het scherm van één
 // project met taken om af te vinken en notities. Op de pc dezelfde schermen, naast de zijbalk.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
@@ -17,13 +18,6 @@ import {
 
 // Zoekterm en filter blijven staan als je een project opent en terugkomt.
 const kept = { query: '', filter: 'active' };
-/** Naar de verwijderde projecten (vanuit Instellingen). */
-export function showDeletedProjects() {
-  kept.filter = 'deleted';
-  kept.query = '';
-  go('/projecten');
-}
-
 function useKept(key) {
   const [v, setV] = useState(kept[key]);
   return [v, (x) => { kept[key] = x; setV(x); }];
@@ -40,15 +34,13 @@ export function ProjectsScreen() {
   const [filter, setFilter] = useKept('filter');
   const [creating, setCreating] = useState(false);
   const [syncInfo, setSyncInfo] = useState(false);
-  const [askWipe, setAskWipe] = useState(null); // project, of 'all'
 
   const stats = projectStats(data);
   const live = liveProjects(data);
   const active = live.filter((p) => !p.done);
   const finished = live.filter((p) => p.done);
-  const deleted = data.projects.filter((p) => p.deletedAt).sort((a, b) => b.deletedAt - a.deletedAt);
-  const f = filter === 'deleted' && !deleted.length ? 'active' : filter;
-  const base = f === 'active' ? active : f === 'done' ? finished : f === 'deleted' ? deleted : live;
+  const f = filter;
+  const base = f === 'active' ? active : f === 'done' ? finished : live;
 
   // Zoeken in naam en omschrijving, en in de tekst van de notities (dan staat de gevonden notitie op de kaart).
   const words = searchWords(query);
@@ -67,33 +59,17 @@ export function ProjectsScreen() {
     <${FilterChip} selected=${f === 'active'} onClick=${() => setFilter('active')}>Actief · ${active.length}<//>
     <${FilterChip} selected=${f === 'done'} onClick=${() => setFilter('done')}>Afgerond · ${finished.length}<//>
     <${FilterChip} selected=${f === 'all'} onClick=${() => setFilter('all')}>Alles · ${live.length}<//>
-    ${deleted.length > 0 && html`<${FilterChip} selected=${f === 'deleted'} onClick=${() => setFilter('deleted')}>Verwijderd · ${deleted.length}<//>`}
   </div>`;
 
-  const list = live.length === 0 && f !== 'deleted' ? html`<${EmptyState} icon="folder" title="Nog geen projecten"
+  const list = live.length === 0 ? html`<${EmptyState} icon="folder" title="Nog geen projecten"
       text="Tik op + om een project te maken." />`
     : shown.length === 0 ? html`<p class="sub nothing center">${words.length ? 'Niets gevonden.' : f === 'done' ? 'Nog geen afgeronde projecten.' : 'Geen actieve projecten.'}</p>`
-    : f === 'deleted' ? html`<div class="proj-grid">${shown.map((p) => html`<${Card} key=${p.id} cls=${'trash-card proj-card pc-' + p.color}>
-        <div class="item-body">
-          <div class="card-title clamp2">${p.name}</div>
-          <div class="small faint">${countText(stats.get(p.id))}nog ${plural(daysLeft(p), 'dag', 'dagen')} · verwijderd ${fmtDate(p.deletedAt)}</div>
-        </div>
-        <div class="btn-row">
-          <${Button} icon="i_restore" onClick=${async () => { await store.restoreProject(p.id); toast('Teruggezet'); }}>Terugzetten<//>
-          <${Button} cls="danger-text" icon="i_delete" onClick=${() => setAskWipe(p)}>Wissen…<//>
-        </div>
-      <//>`)}</div>`
     : html`<div class="proj-grid">${shown.map((p) => html`<${ProjectCard} key=${p.id} project=${p} stats=${stats.get(p.id)}
         hit=${hits.get(p.id)} onClick=${() => open(p)} />`)}</div>`;
 
   const dialogs = html`
     ${creating && html`<${ProjectDialog} onDismiss=${() => setCreating(false)} onCreated=${open} />`}
-    ${syncInfo && html`<${SyncDialog} onDismiss=${() => setSyncInfo(false)} />`}
-    ${askWipe && html`<${ConfirmDialog} kind="danger" icon="i_delete"
-      title=${askWipe === 'all' ? 'Alle verwijderde projecten wissen?' : askWipe.name + ' definitief wissen?'}
-      text="Met alle notities. Dit kan niet ongedaan gemaakt worden." confirmLabel="Wissen"
-      onConfirm=${() => { const a = askWipe; setAskWipe(null); store.deleteProjectsForever(a === 'all' ? undefined : [a.id]); }}
-      onDismiss=${() => setAskWipe(null)} />`}`;
+    ${syncInfo && html`<${SyncDialog} onDismiss=${() => setSyncInfo(false)} />`}`;
 
   return html`<div class="screen scr-projects">
     <${BrandBar} title="Projecten" many>
@@ -103,20 +79,51 @@ export function ProjectsScreen() {
       <${IconButton} icon="i_settings" label="Instellingen" onClick=${() => go('/instellingen')} />
     <//>
     <main class="content">
-      ${(live.length > 0 || deleted.length > 0) && html`
+      ${live.length > 0 && html`
         <${SearchField} value=${query} onInput=${setQuery} hint="Zoeken in projecten en notities" />
         ${chips}`}
-      ${overdue > 0 && f !== 'deleted' && html`<div class="banner tone-red">
+      ${overdue > 0 && html`<div class="banner tone-red">
         <span class="banner-icon"><${Icon} name="i_warning" size=${20} /></span>
         <span class="banner-body"><b>${overdue === 1 ? '1 taak te laat' : overdue + ' taken te laat'}</b><span>Over de deadline.</span></span>
       </div>`}
       ${list}
-      ${f === 'deleted' && html`<${Button} kind="ghost" cls="danger-text" icon="i_delete" onClick=${() => setAskWipe('all')}>Alles wissen…<//>`}
     </main>
     <${Footer}>
       <${Button} kind="primary" icon="i_add" cls="wide" onClick=${() => setCreating(true)}>Nieuw project<//>
     <//>
     ${dialogs}
+  </div>`;
+}
+
+// ---- verwijderde projecten (30 dagen), zoals de prullenmand van de artikels
+
+export function ProjectTrashScreen() {
+  const data = useData();
+  const [ask, setAsk] = useState(null); // project, of 'all'
+  const stats = projectStats(data);
+  const list = data.projects.filter((p) => p.deletedAt).sort((a, b) => b.deletedAt - a.deletedAt);
+  return html`<div class="screen scr-trash">
+    <${TopBar} title="Verwijderde projecten" onBack=${() => back('/instellingen')}>
+      ${list.length > 0 && html`<${IconButton} icon="i_delete" label="Alles wissen" onClick=${() => setAsk('all')} />`}
+    <//>
+    <main class="content">
+      ${list.length === 0 ? html`<${EmptyState} icon="i_delete" title="Geen verwijderde projecten" text="Verwijderde projecten blijven hier 30 dagen." />`
+        : html`<div class="proj-grid">${list.map((p) => html`<${Card} key=${p.id} cls=${'trash-card proj-card pc-' + p.color}>
+          <div class="item-body">
+            <div class="card-title clamp2">${p.name}</div>
+            <div class="small faint">${countText(stats.get(p.id))}nog ${plural(daysLeft(p), 'dag', 'dagen')} · verwijderd ${fmtDate(p.deletedAt)}</div>
+          </div>
+          <div class="btn-row">
+            <${Button} icon="i_restore" onClick=${async () => { await store.restoreProject(p.id); toast('Teruggezet'); }}>Terugzetten<//>
+            <${Button} cls="danger-text" icon="i_delete" onClick=${() => setAsk(p)}>Wissen…<//>
+          </div>
+        <//>`)}</div>`}
+    </main>
+    ${ask && html`<${ConfirmDialog} kind="danger" icon="i_delete"
+      title=${ask === 'all' ? 'Alle verwijderde projecten wissen?' : ask.name + ' definitief wissen?'}
+      text="Met alle notities. Dit kan niet ongedaan gemaakt worden." confirmLabel="Wissen"
+      onConfirm=${() => { const a = ask; setAsk(null); store.deleteProjectsForever(a === 'all' ? undefined : [a.id]); }}
+      onDismiss=${() => setAsk(null)} />`}
   </div>`;
 }
 

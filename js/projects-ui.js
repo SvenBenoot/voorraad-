@@ -413,7 +413,7 @@ export function ProjectDialog({ project, onDismiss, onCreated, onDeleted }) {
 
   if (askDelete) {
     return html`<${ConfirmDialog} kind="danger" icon="i_delete" title=${project.name + ' verwijderen?'}
-      text="Met alle notities. Je vindt het 30 dagen terug bij Verwijderd."
+      text="Met alle notities. Je vindt het 30 dagen terug in Instellingen, bij Prullenmand."
       confirmLabel="Verwijderen" onDismiss=${() => setAskDelete(false)}
       onConfirm=${async () => {
         const id = project.id;
