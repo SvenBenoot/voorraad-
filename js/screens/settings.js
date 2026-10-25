@@ -13,7 +13,6 @@ import { back, go } from '../router.js';
 import { VERSION } from '../version.js';
 import { loadCatalog, resetCatalog } from '../catalog.js';
 import { CloudCard } from '../cloud-card.js';
-import { showDeletedProjects } from './projects.js';
 
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 
@@ -179,7 +178,7 @@ export function SettingsScreen() {
         <div class="card-title">Verwijderde artikels</div>
         <p class="small faint">${data.trash.length ? plural(data.trash.length, 'artikel', 'artikels') + ' · 30 dagen bewaard' : 'Leeg'}</p>
       <//>
-      <${Card} onClick=${showDeletedProjects}>
+      <${Card} onClick=${() => go('/verwijderde-projecten')}>
         <div class="card-title">Verwijderde projecten</div>
         <p class="small faint">${deletedProjects ? plural(deletedProjects, 'project', 'projecten') + ' · 30 dagen bewaard' : 'Leeg'}</p>
       <//></section>
