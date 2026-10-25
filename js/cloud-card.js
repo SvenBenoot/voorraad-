@@ -55,7 +55,7 @@ export function LoginScreen() {
       <div class="empty login-head">
         <div class="empty-icon"><${Icon} name="i_cloud_done" size=${32} /></div>
         <div class="empty-title">Inloggen</div>
-        <div class="empty-text">Log in om je voorraad te bekijken.</div>
+        <div class="empty-text">Log in om verder te gaan.</div>
       </div>
       <${Card} cls="form">
         ${s.error && html`<${StatusBanner} tone="orange" icon="i_error" title="Inloggen mislukt" text=${s.error} />`}

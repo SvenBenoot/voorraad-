@@ -127,6 +127,9 @@ export function normalize(raw) {
     // Merken uit de productlijst die je weghaalde; die verschijnen niet meer in de merkenlijst.
     hiddenBrands: (raw?.hiddenBrands ?? []).map((b) => String(b).trim()).filter(Boolean),
     pickList: (raw?.pickList ?? []).map((p) => ({ itemId: p.itemId, amount: Math.max(1, p.amount | 0), done: !!p.done })),
+    // Projecten en hun notities (sinds 1.20). Verwijderde houden een deletedAt (30 dagen), zodat andere toestellen dat ook zien.
+    projects: (raw?.projects ?? []).filter((x) => x?.id != null).map(normProject),
+    notes: (raw?.notes ?? []).filter((x) => x?.id != null && x.projectId != null).map(normNote),
   };
   // De categorieën die er in 1.7 bijkwamen één keer toevoegen (vóór "Andere"), tenzij er al een met die naam is.
   if (raw?.categories?.length && !raw.extraCategories) {
@@ -140,6 +143,61 @@ export function normalize(raw) {
   // "Andere" kan niet weg: daar komen artikels van een verwijderde categorie terecht.
   if (!d.categories.some((c) => c.id === OTHER)) d.categories.push(DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1]);
   return d;
+}
+
+// ---- projecten en notities
+
+/** Kleuren die je een project kan geven (de streep links op de kaart). */
+export const PROJECT_COLORS = [
+  { key: 'blue', label: 'Blauw' }, { key: 'petrol', label: 'Petrol' }, { key: 'green', label: 'Groen' },
+  { key: 'orange', label: 'Oranje' }, { key: 'red', label: 'Rood' }, { key: 'purple', label: 'Paars' }, { key: 'gray', label: 'Grijs' },
+];
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const time = (t, fallback) => (Number.isFinite(+t) && +t > 0 ? +t : fallback);
+
+// Altijd dezelfde velden in dezelfde vorm: zo ziet de vergelijking met de online versie geen schijnverschillen.
+export function normProject(p) {
+  const now = Date.now();
+  const createdAt = time(p.createdAt, now);
+  return {
+    id: String(p.id), name: String(p.name ?? ''), note: String(p.note ?? ''),
+    color: PROJECT_COLORS.some((c) => c.key === p.color) ? p.color : 'blue',
+    done: !!p.done, pinned: !!p.pinned, createdAt, updatedAt: time(p.updatedAt, createdAt),
+    ...(p.deletedAt ? { deletedAt: +p.deletedAt } : {}),
+  };
+}
+
+export function normNote(n) {
+  const now = Date.now();
+  const createdAt = time(n.createdAt, now);
+  return {
+    id: String(n.id), projectId: String(n.projectId), text: String(n.text ?? ''), task: n.task !== false,
+    done: n.task !== false && !!n.done, important: !!n.important, due: n.task !== false && DATE_RE.test(n.due ?? '') ? n.due : '',
+    createdAt, updatedAt: time(n.updatedAt, createdAt), doneAt: n.done ? time(n.doneAt, 0) : 0,
+    ...(n.deletedAt ? { deletedAt: +n.deletedAt } : {}),
+  };
+}
+
+/** Datum als "2026-10-25" in de eigen tijdzone (zo bewaart een datumveld ze ook). */
+export function dayKey(t = Date.now()) {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+/** Hoeveel dagen [due] van vandaag ligt (negatief = voorbij). */
+export function daysUntil(due) {
+  const [y, m, d] = due.split('-').map(Number);
+  const now = new Date();
+  return Math.round((new Date(y, m - 1, d) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / DAY);
+}
+
+export const liveProjects = (d) => d.projects.filter((p) => !p.deletedAt);
+export const notesOf = (d, projectId) => d.notes.filter((n) => n.projectId === projectId && !n.deletedAt);
+
+/** Open taken eerst op belangrijk, dan op deadline (vroegste eerst), dan in de volgorde waarin je ze maakte. */
+export function sortTasks(list) {
+  return [...list].sort((a, b) => (b.important - a.important)
+    || ((a.due ? 0 : 1) - (b.due ? 0 : 1)) || (a.due && b.due ? a.due.localeCompare(b.due) : 0)
+    || a.createdAt - b.createdAt);
 }
 
 // ---- winkel (één bron van waarheid, schermen luisteren mee)
@@ -282,8 +340,119 @@ export const store = {
     const limit = Date.now() - TRASH_DAYS * DAY;
     return this.update((d) => {
       const keep = d.trash.filter((i) => i.deletedAt > limit);
-      if (keep.length === d.trash.length) return null;
+      // Verwijderde projecten (met hun notities) en losse verwijderde notities ook.
+      const gone = new Set(d.projects.filter((p) => p.deletedAt && p.deletedAt <= limit).map((p) => p.id));
+      const projects = d.projects.filter((p) => !gone.has(p.id));
+      const notes = d.notes.filter((n) => !gone.has(n.projectId) && !(n.deletedAt && n.deletedAt <= limit));
+      if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length) return null;
       d.trash = keep;
+      d.projects = projects;
+      d.notes = notes;
+      return d;
+    });
+  },
+
+  // ---- projecten
+
+  project(id) { return data.projects.find((p) => p.id === id && !p.deletedAt); },
+
+  async addProject({ name, note = '', color = 'blue' }) {
+    const now = Date.now();
+    const p = normProject({ id: newId(), name: name.trim(), note: note.trim(), color, createdAt: now, updatedAt: now });
+    await this.update((d) => { d.projects = [...d.projects, p]; return d; });
+    return p;
+  },
+
+  /** Velden van een project wijzigen, bv. { name }, { done: true } of { pinned: false }. */
+  editProject(id, patch) {
+    return this.update((d) => {
+      const old = d.projects.find((p) => p.id === id);
+      if (!old) return null;
+      const next = normProject({ ...old, ...patch, updatedAt: Date.now() });
+      d.projects = d.projects.map((p) => (p.id === id ? next : p));
+      return d;
+    });
+  },
+
+  /** Project naar de prullenmand (30 dagen); de notities blijven erbij en komen mee terug. */
+  deleteProject(id) {
+    const now = Date.now();
+    return this.update((d) => {
+      if (!d.projects.some((p) => p.id === id && !p.deletedAt)) return null;
+      d.projects = d.projects.map((p) => (p.id === id ? { ...p, deletedAt: now, updatedAt: now } : p));
+      return d;
+    });
+  },
+
+  restoreProject(id) {
+    return this.update((d) => {
+      if (!d.projects.some((p) => p.id === id && p.deletedAt)) return null;
+      d.projects = d.projects.map((p) => { if (p.id !== id) return p; const { deletedAt, ...rest } = p; return { ...rest, updatedAt: Date.now() }; }); // eslint-disable-line no-unused-vars
+      return d;
+    });
+  },
+
+  /** Definitief weg, met alle notities ([ids] weglaten = alle verwijderde projecten). */
+  deleteProjectsForever(ids) {
+    return this.update((d) => {
+      const gone = new Set(d.projects.filter((p) => p.deletedAt && (!ids || ids.includes(p.id))).map((p) => p.id));
+      if (!gone.size) return null;
+      d.projects = d.projects.filter((p) => !gone.has(p.id));
+      d.notes = d.notes.filter((n) => !gone.has(n.projectId));
+      return d;
+    });
+  },
+
+  // ---- notities en taken
+
+  async addNote(projectId, { text, task = true, due = '', important = false }) {
+    const now = Date.now();
+    const n = normNote({ id: newId(), projectId, text: text.trim(), task, due, important, createdAt: now, updatedAt: now });
+    await this.update((d) => {
+      d.notes = [...d.notes, n];
+      // Zo staat het project bovenaan bij "laatst gewijzigd".
+      d.projects = d.projects.map((p) => (p.id === projectId ? { ...p, updatedAt: now } : p));
+      return d;
+    });
+    return n;
+  },
+
+  /** Velden van een notitie wijzigen, bv. { text }, { due }, { projectId } (verplaatsen). */
+  editNote(id, patch) {
+    return this.update((d) => {
+      const old = d.notes.find((n) => n.id === id);
+      if (!old) return null;
+      const now = Date.now();
+      const merged = { ...old, ...patch, updatedAt: now };
+      if (patch.done != null && patch.done !== old.done) merged.doneAt = patch.done ? now : 0;
+      const next = normNote(merged);
+      if (same(old, next, ['updatedAt'])) return null;
+      d.notes = d.notes.map((n) => (n.id === id ? next : n));
+      return d;
+    });
+  },
+
+  toggleNote(id) {
+    const n = data.notes.find((x) => x.id === id);
+    return n ? this.editNote(id, { done: !n.done }) : undefined;
+  },
+
+  /** Naar de prullenmand; [ids] kan er ook meerdere zijn (bv. alle afgevinkte taken). */
+  deleteNotes(ids) {
+    const now = Date.now();
+    const set = new Set(ids);
+    return this.update((d) => {
+      if (!d.notes.some((n) => set.has(n.id) && !n.deletedAt)) return null;
+      d.notes = d.notes.map((n) => (set.has(n.id) && !n.deletedAt ? { ...n, deletedAt: now, updatedAt: now } : n));
+      return d;
+    });
+  },
+
+  restoreNotes(ids) {
+    const set = new Set(ids);
+    return this.update((d) => {
+      if (!d.notes.some((n) => set.has(n.id) && n.deletedAt)) return null;
+      d.notes = d.notes.map((n) => { if (!set.has(n.id) || !n.deletedAt) return n; const { deletedAt, ...rest } = n; return { ...rest, updatedAt: Date.now() }; }); // eslint-disable-line no-unused-vars
       return d;
     });
   },
@@ -393,7 +562,8 @@ export const store = {
   /** Vervangt alles door een reservekopie. */
   async replaceAll(raw) {
     const prev = data;
-    data = normalize(raw);
+    // Een reservekopie van vóór 1.20 heeft geen projecten: dan blijven de huidige staan.
+    data = normalize(raw && !('projects' in raw) ? { ...raw, projects: data.projects, notes: data.notes } : raw);
     emit();
     sync(prev, data);
     await backend.saveData(data);
@@ -427,6 +597,13 @@ function applyDeltas(d, deltas, extra = {}) {
 
 function emit() { for (const fn of listeners) fn(data); }
 
+/** Platte objecten veld voor veld vergelijken, zonder de velden in [skip]. */
+function same(a, b, skip = []) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) if (!skip.includes(k) && a[k] !== b[k]) return false;
+  return true;
+}
+
 /** Een code die nog niet bij een artikel hoort (ook niet bij een in de prullenmand, dat label zit er misschien nog op). */
 function freshCode(d) {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -441,7 +618,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

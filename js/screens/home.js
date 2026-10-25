@@ -7,7 +7,7 @@ import { trashItem,
   useData, usePrefs, BrandBar, IconButton, Footer, Button, SearchField, FilterChip, StatusBanner, EmptyState,
   ItemCard, SwipeRow, ConfirmDialog, SectionHeader, plural, Dialog, DialogButtons,
 } from '../ui.js';
-import { go } from '../router.js';
+import { go, toStart } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
 
 // Zoeken, filter en merk blijven staan als je een artikel opent en terugkomt.
@@ -74,7 +74,8 @@ export function HomeScreen() {
   });
 
   return html`<div class="screen">
-    <${BrandBar} title="Voorraad" many>
+    <${BrandBar} title="Inventaris" many>
+      <${IconButton} icon="grid_view" label="Start" onClick=${toStart} />
       <${SyncButton} onClick=${() => setSyncInfo(true)} />
       <${IconButton} icon="i_add" label="Artikel toevoegen" size=${28} onClick=${() => go('/nieuw')} />
       <${IconButton} icon="i_checklist" label="Aanvullen" onClick=${() => go('/aanvullen')} />
