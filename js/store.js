@@ -177,12 +177,10 @@ export function normNote(n) {
     // Opgemaakte tekst (sinds 1.21; text blijft de gewone tekstversie), eigen volgorde en foto's.
     html: String(n.html ?? ''),
     order: Number.isFinite(+n.order) && n.order !== null && n.order !== '' ? +n.order : noteOrder(n.task !== false, createdAt),
-    photos: Array.isArray(n.photos) ? n.photos.map(String).slice(0, MAX_PHOTOS) : [],
     ...(n.deletedAt ? { deletedAt: +n.deletedAt } : {}),
   };
 }
 
-export const MAX_PHOTOS = 6;
 /** Plaats van een nieuwe notitie: een taak onderaan de lijst, een notitie bovenaan. */
 export const noteOrder = (task, t = Date.now()) => (task ? t : -t);
 
@@ -353,7 +351,6 @@ export const store = {
       if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length) return null;
       d.trash = keep;
       d.projects = projects;
-      gonePhotos(d.notes, notes);
       d.notes = notes;
       return d;
     });
@@ -406,7 +403,6 @@ export const store = {
       if (!gone.size) return null;
       d.projects = d.projects.filter((p) => !gone.has(p.id));
       const notes = d.notes.filter((n) => !gone.has(n.projectId));
-      gonePhotos(d.notes, notes);
       d.notes = notes;
       return d;
     });
@@ -414,9 +410,9 @@ export const store = {
 
   // ---- notities en taken
 
-  async addNote(projectId, { text, html = '', task = true, due = '', important = false, photos = [] }) {
+  async addNote(projectId, { text, html = '', task = true, due = '', important = false }) {
     const now = Date.now();
-    const n = normNote({ id: newId(), projectId, text: text.trim(), html, task, due, important, photos, createdAt: now, updatedAt: now });
+    const n = normNote({ id: newId(), projectId, text: text.trim(), html, task, due, important, createdAt: now, updatedAt: now });
     await this.update((d) => {
       d.notes = [...d.notes, n];
       // Zo staat het project bovenaan bij "laatst gewijzigd".
@@ -606,15 +602,6 @@ function applyDeltas(d, deltas, extra = {}) {
 
 function emit() { for (const fn of listeners) fn(data); }
 
-// Foto's van notities die definitief weg zijn, ook online en op het toestel opruimen (zet photos.js).
-let photoCleaner = null;
-export function setPhotoCleaner(fn) { photoCleaner = fn; }
-function gonePhotos(before, after) {
-  const keep = new Set(after.map((n) => n.id));
-  const ids = before.filter((n) => !keep.has(n.id)).flatMap((n) => n.photos ?? []);
-  if (ids.length) setTimeout(() => photoCleaner?.(ids), 0);
-}
-
 /** Platte objecten veld voor veld vergelijken, zonder de velden in [skip]. */
 function same(a, b, skip = []) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
@@ -636,7 +623,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, photoQueue: [], photoDelete: [], cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
