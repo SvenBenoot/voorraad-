@@ -174,9 +174,17 @@ export function normNote(n) {
     id: String(n.id), projectId: String(n.projectId), text: String(n.text ?? ''), task: n.task !== false,
     done: n.task !== false && !!n.done, important: !!n.important, due: n.task !== false && DATE_RE.test(n.due ?? '') ? n.due : '',
     createdAt, updatedAt: time(n.updatedAt, createdAt), doneAt: n.done ? time(n.doneAt, 0) : 0,
+    // Opgemaakte tekst (sinds 1.21; text blijft de gewone tekstversie), eigen volgorde en foto's.
+    html: String(n.html ?? ''),
+    order: Number.isFinite(+n.order) && n.order !== null && n.order !== '' ? +n.order : noteOrder(n.task !== false, createdAt),
+    photos: Array.isArray(n.photos) ? n.photos.map(String).slice(0, MAX_PHOTOS) : [],
     ...(n.deletedAt ? { deletedAt: +n.deletedAt } : {}),
   };
 }
+
+export const MAX_PHOTOS = 6;
+/** Plaats van een nieuwe notitie: een taak onderaan de lijst, een notitie bovenaan. */
+export const noteOrder = (task, t = Date.now()) => (task ? t : -t);
 
 /** Datum als "2026-10-25" in de eigen tijdzone (zo bewaart een datumveld ze ook). */
 export function dayKey(t = Date.now()) {
@@ -193,11 +201,9 @@ export function daysUntil(due) {
 export const liveProjects = (d) => d.projects.filter((p) => !p.deletedAt);
 export const notesOf = (d, projectId) => d.notes.filter((n) => n.projectId === projectId && !n.deletedAt);
 
-/** Open taken eerst op belangrijk, dan op deadline (vroegste eerst), dan in de volgorde waarin je ze maakte. */
+/** In de volgorde die je zelf koos (verslepen); nieuwe taken komen onderaan, nieuwe notities bovenaan. */
 export function sortTasks(list) {
-  return [...list].sort((a, b) => (b.important - a.important)
-    || ((a.due ? 0 : 1) - (b.due ? 0 : 1)) || (a.due && b.due ? a.due.localeCompare(b.due) : 0)
-    || a.createdAt - b.createdAt);
+  return [...list].sort((a, b) => a.order - b.order || a.createdAt - b.createdAt);
 }
 
 // ---- winkel (één bron van waarheid, schermen luisteren mee)
@@ -347,6 +353,7 @@ export const store = {
       if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length) return null;
       d.trash = keep;
       d.projects = projects;
+      gonePhotos(d.notes, notes);
       d.notes = notes;
       return d;
     });
@@ -398,16 +405,18 @@ export const store = {
       const gone = new Set(d.projects.filter((p) => p.deletedAt && (!ids || ids.includes(p.id))).map((p) => p.id));
       if (!gone.size) return null;
       d.projects = d.projects.filter((p) => !gone.has(p.id));
-      d.notes = d.notes.filter((n) => !gone.has(n.projectId));
+      const notes = d.notes.filter((n) => !gone.has(n.projectId));
+      gonePhotos(d.notes, notes);
+      d.notes = notes;
       return d;
     });
   },
 
   // ---- notities en taken
 
-  async addNote(projectId, { text, task = true, due = '', important = false }) {
+  async addNote(projectId, { text, html = '', task = true, due = '', important = false, photos = [] }) {
     const now = Date.now();
-    const n = normNote({ id: newId(), projectId, text: text.trim(), task, due, important, createdAt: now, updatedAt: now });
+    const n = normNote({ id: newId(), projectId, text: text.trim(), html, task, due, important, photos, createdAt: now, updatedAt: now });
     await this.update((d) => {
       d.notes = [...d.notes, n];
       // Zo staat het project bovenaan bij "laatst gewijzigd".
@@ -597,6 +606,15 @@ function applyDeltas(d, deltas, extra = {}) {
 
 function emit() { for (const fn of listeners) fn(data); }
 
+// Foto's van notities die definitief weg zijn, ook online en op het toestel opruimen (zet photos.js).
+let photoCleaner = null;
+export function setPhotoCleaner(fn) { photoCleaner = fn; }
+function gonePhotos(before, after) {
+  const keep = new Set(after.map((n) => n.id));
+  const ids = before.filter((n) => !keep.has(n.id)).flatMap((n) => n.photos ?? []);
+  if (ids.length) setTimeout(() => photoCleaner?.(ids), 0);
+}
+
 /** Platte objecten veld voor veld vergelijken, zonder de velden in [skip]. */
 function same(a, b, skip = []) {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
@@ -618,7 +636,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, photoQueue: [], photoDelete: [], cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

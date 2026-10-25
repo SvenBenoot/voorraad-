@@ -6,12 +6,12 @@ import { Icon } from '../icons.js';
 import { store, liveProjects, notesOf, sortTasks, daysLeft, dayKey } from '../store.js';
 import {
   useData, useDesktop, BrandBar, TopBar, IconButton, Button, Footer, SearchField, FilterChip, Card, EmptyState, ConfirmDialog,
-  SwipeRow, plural, toast, fmtDate,
+  plural, toast, fmtDate,
 } from '../ui.js';
 import { go, back, home, toStart } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
 import {
-  projectStats, sortProjects, ProjectCard, NoteRow, NoteDialog, ProjectDialog, Composer, shareProject, trashNotes,
+  projectStats, sortProjects, ProjectCard, NoteRow, NoteDialog, ProjectDialog, SortableList, shareProject, trashNotes,
   searchWords, matches, Linked,
 } from '../projects-ui.js';
 
@@ -164,7 +164,7 @@ export function ProjectScreen({ id }) {
   const data = useData();
   const desktop = useDesktop();
   const [editing, setEditing] = useState(false);
-  const [openNote, setOpenNote] = useState(null);
+  const [openNote, setOpenNote] = useState(null); // { note } om te wijzigen, of { kind } voor een nieuwe
   const [query, setQuery] = useState('');
   const [doneOpen, setDoneOpenState] = useState(showDone.get(id) ?? false);
   const [askClear, setAskClear] = useState(false);
@@ -186,7 +186,7 @@ export function ProjectScreen({ id }) {
   const words = searchWords(query);
   const notes = words.length ? all.filter((n) => matches(words, n.text)) : all;
   const tasks = sortTasks(notes.filter((n) => n.task && !n.done));
-  const memo = notes.filter((n) => !n.task).sort((a, b) => b.important - a.important || b.createdAt - a.createdAt);
+  const memo = sortTasks(notes.filter((n) => !n.task));
   const done = notes.filter((n) => n.task && n.done).sort((a, b) => b.doneAt - a.doneAt);
   const totalTasks = all.filter((n) => n.task).length;
   const totalDone = all.filter((n) => n.task && n.done).length;
@@ -199,13 +199,13 @@ export function ProjectScreen({ id }) {
   };
   const clearDone = () => trashNotes(all.filter((n) => n.task && n.done).map((n) => n.id), 'Afgevinkte taken verwijderd');
 
-  // Rij op de gsm: vegen naar rechts = wijzigen, naar links = verwijderen (met Ongedaan maken).
-  const row = (n) => (desktop
-    ? html`<${NoteRow} key=${n.id} note=${n} onOpen=${() => setOpenNote(n)} />`
-    : html`<${SwipeRow} key=${n.id} onEdit=${() => setOpenNote(n)} onDelete=${() => trashNotes([n.id])}>
-        <${NoteRow} note=${n} onOpen=${() => setOpenNote(n)} />
-      <//>`);
-  const listOf = (items) => html`<div class="note-list">${items.map(row)}</div>`;
+  // Wijzigen enkel met het potlood. Open taken en notities verplaats je met het greepje (niet tijdens zoeken).
+  const row = (n, handle) => html`<${NoteRow} key=${n.id} note=${n} handle=${handle} onEdit=${() => setOpenNote({ note: n })} />`;
+  const listOf = (items) => (words.length || items.length < 2
+    ? html`<div class="note-list">${items.map((n) => row(n))}</div>`
+    : html`<${SortableList} items=${items} row=${row} />`);
+  const plainList = (items, cls = 'note-list') => html`<div class=${cls}>${items.map((n) => row(n))}</div>`;
+  const add = (kind) => setOpenNote({ kind });
 
   const doneVisible = doneOpen || words.length > 0;
 
@@ -217,14 +217,15 @@ export function ProjectScreen({ id }) {
       </button>
       <${Button} kind="ghost" icon="i_delete" cls="danger-text" onClick=${() => setAskClear(true)}>Wissen…<//>
     </div>
-    ${doneVisible && listOf(done)}
+    ${doneVisible && plainList(done)}
   </div>`;
 
   const nothing = words.length > 0 && notes.length === 0 && html`<p class="sub nothing center">Niets gevonden.</p>`;
 
   const dialogs = html`
     ${editing && html`<${ProjectDialog} project=${p} onDismiss=${() => setEditing(false)} onDeleted=${() => home('/projecten')} />`}
-    ${openNote && html`<${NoteDialog} key=${openNote.id} note=${openNote} onDismiss=${() => setOpenNote(null)} />`}
+    ${openNote && html`<${NoteDialog} key=${openNote.note?.id ?? 'new'} note=${openNote.note} projectId=${id} kind=${openNote.kind}
+      onDismiss=${() => setOpenNote(null)} />`}
     ${askClear && html`<${ConfirmDialog} kind="danger" icon="i_delete" title="Afgevinkte taken verwijderen?"
       text=${plural(totalDone, 'taak', 'taken') + ' verdwijnen uit dit project.'} confirmLabel="Verwijderen"
       onConfirm=${() => { setAskClear(false); clearDone(); }} onDismiss=${() => setAskClear(false)} />`}`;
@@ -260,14 +261,14 @@ export function ProjectScreen({ id }) {
       ${nothing}
       <div class="proj-cols">
         <section class="panel">
-          <div class="panel-head"><h2>Te doen</h2>${tasks.length > 0 && html`<span class="pill tone-blue">${tasks.length}</span>`}</div>
-          <${Composer} projectId=${id} kind="task" autoFocus />
+          <div class="panel-head"><h2>Te doen</h2>${tasks.length > 0 && html`<span class="pill tone-blue">${tasks.length}</span>`}
+            <${Button} icon="i_add" cls="panel-add" onClick=${() => add('task')}>Taak<//></div>
           ${tasks.length > 0 ? listOf(tasks) : !words.length && html`<p class="sub ok-line"><${Icon} name="i_check_circle" size=${20} cls="tone-text-green" />${totalTasks ? 'Alles afgevinkt.' : 'Nog geen taken.'}</p>`}
           ${doneBlock}
         </section>
         <section class="panel">
-          <div class="panel-head"><h2>Notities</h2>${memo.length > 0 && html`<span class="pill tone-blue">${memo.length}</span>`}</div>
-          <${Composer} projectId=${id} kind="note" />
+          <div class="panel-head"><h2>Notities</h2>${memo.length > 0 && html`<span class="pill tone-blue">${memo.length}</span>`}
+            <${Button} icon="i_add" cls="panel-add" onClick=${() => add('note')}>Notitie<//></div>
           ${memo.length > 0 ? listOf(memo) : !words.length && html`<p class="sub">Nog geen notities.</p>`}
         </section>
       </div>
@@ -275,7 +276,7 @@ export function ProjectScreen({ id }) {
     </div>`;
   }
 
-  // Gsm: rustig, in twee tabbladen. Bovenaan enkel de voortgang, onderaan het invoervak van het gekozen tabblad.
+  // Gsm: rustig, in twee tabbladen. Bovenaan enkel de voortgang, onderaan altijd de knop Toevoegen.
   const openCount = all.filter((n) => n.task && !n.done).length;
   const memoCount = all.filter((n) => !n.task).length;
   const t = tab ?? (totalTasks === 0 && memoCount > 0 ? 'notes' : 'tasks');
@@ -316,14 +317,14 @@ export function ProjectScreen({ id }) {
             <div class="section">Klaar · ${done.length}</div>
             <button type="button" class="link-btn danger" onClick=${() => setAskClear(true)}>Wissen</button>
           </div>
-          <div class="note-list dim">${doneShown.map(row)}</div>
+          ${plainList(doneShown, 'note-list dim')}
           ${done.length > doneShown.length && html`<button type="button" class="link-btn" onClick=${() => setDoneOpen(true)}>Toon alle ${done.length}</button>`}`}`}
       ${t === 'notes' && (memo.length > 0 ? listOf(memo) : !words.length && html`<div class="proj-empty">
         <${Icon} name="sticky_note_2" size=${32} /><span>Nog geen notities</span></div>`)}
     </main>
-    <footer class="footer composer-bar">
-      <${Composer} key=${t} projectId=${id} kind=${t === 'tasks' ? 'task' : 'note'} compact />
-    </footer>
+    <${Footer}>
+      <${Button} kind="primary" icon="i_add" cls="wide" onClick=${() => add(t === 'tasks' ? 'task' : 'note')}>Toevoegen<//>
+    <//>
     ${dialogs}
   </div>`;
 }

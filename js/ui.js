@@ -210,13 +210,20 @@ export function Switch({ checked, onChange, label }) {
 
 // ---- vensters
 
-export function Dialog({ onDismiss, children, cls = '' }) {
+/** [sticky]: niet sluiten bij een tik naast het venster (bv. als je er tekst in typt). */
+export function Dialog({ onDismiss, children, cls = '', sticky }) {
+  const ref = useRef(null);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onDismiss?.(); };
+    // Escape sluit enkel het bovenste venster (er kan een venster in een venster openstaan).
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      const all = document.querySelectorAll('.scrim');
+      if (all[all.length - 1] === ref.current) onDismiss?.();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onDismiss]);
-  return html`<div class="scrim" onClick=${(e) => { if (e.target === e.currentTarget) onDismiss?.(); }}>
+  return html`<div class="scrim" ref=${ref} onClick=${(e) => { if (!sticky && e.target === e.currentTarget) onDismiss?.(); }}>
     <div class=${'dialog ' + cls} role="dialog" aria-modal="true">
       <div class="brand-strip thick"></div>
       ${children}
