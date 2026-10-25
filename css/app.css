@@ -701,3 +701,144 @@ button.check.on { background: var(--brand-diag); color: var(--on-brand); }
 .desk .scr-scan > .scan-bottom { grid-column: 2; grid-row: 3; padding: 16px 32px 24px 24px; align-self: start; }
 .desk .scr-scan .batch { max-height: calc(100dvh - 380px); }
 .desk .scr-catalog .col:first-child { position: sticky; top: 88px; }
+
+/* ---- projecten (1.20): keuzescherm, projectkaarten, taken en notities. Pc-weergave onder .desk */
+
+/* Kleur van een project: streep links op de kaart, bolletje in de zijbalk. */
+.pc-blue { --pc: #30a9ce; } .pc-petrol { --pc: #207088; } .pc-green { --pc: #2fbf80; } .pc-orange { --pc: #e3a23b; }
+.pc-red { --pc: #e0525a; } .pc-purple { --pc: #8e6cef; } .pc-gray { --pc: #8a99a3; }
+.proj-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--pc); flex: none; }
+
+.pill.small-pill { min-width: 0; height: 22px; padding: 0 8px; gap: 4px; font-size: 12px; white-space: nowrap; }
+.pill.small-pill .icon { flex: none; }
+.align-start { align-self: flex-start; }
+.btn.on-accent { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+/* keuzescherm */
+.content.start { gap: 18px; }
+.start-head { padding: 6px 2px 0; }
+.start-title { margin: 0; font-size: 28px; font-weight: 700; line-height: 1.2; }
+.module-grid { display: grid; gap: 12px; }
+.module-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; width: 100%; min-height: 104px; padding: 18px 14px 18px 18px;
+  border-radius: 16px; border: 1px solid var(--card-edge); background: var(--card-fill); color: var(--text); font: inherit; text-align: left;
+  transition: transform .15s ease-out; }
+.module-card::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand1) calc(var(--glow) * 120%), transparent), transparent 70%); }
+.module-card:active { transform: scale(.985); }
+.module-icon { width: 64px; height: 64px; border-radius: 18px; background: #14272F; display: flex; align-items: center; justify-content: center; flex: none;
+  box-shadow: 0 8px 20px -10px var(--brand1); }
+.module-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.module-title { font-size: 20px; font-weight: 700; }
+.module-line { font-size: 14px; color: var(--sub); }
+.module-line.tone-text-orange, .module-line.tone-text-red, .module-line.tone-text-green { font-weight: 600; }
+.start-soon { display: flex; flex-direction: column; gap: 8px; }
+.start-soon .section { margin: 4px 0 0; }
+
+/* lijst met projecten */
+.proj-grid { display: flex; flex-direction: column; gap: 10px; }
+.proj-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 14px 20px; }
+.proj-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pc); }
+.proj-top { display: flex; align-items: center; gap: 8px; }
+.proj-name { flex: 1; min-width: 0; }
+.proj-card.is-done .proj-name { color: var(--sub); }
+.proj-pin { color: var(--accent); display: flex; }
+.proj-hit { display: flex; align-items: center; gap: 6px; color: var(--accent); min-width: 0; }
+.proj-progress { display: flex; align-items: center; gap: 10px; }
+.proj-progress .progress { flex: 1; margin-top: 0; height: 6px; }
+.proj-meta { margin-top: 2px; align-items: center; }
+.proj-card.trash-card { gap: 0; }
+
+/* één project */
+.proj-info { gap: 10px; }
+.proj-note { font-size: 15px; overflow-wrap: anywhere; }
+.proj-stat .progress { margin-top: 8px; }
+
+.composer { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px 14px; border-radius: 14px; border: 1px solid var(--card-edge); background: var(--card-fill); }
+.composer:focus-within { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box, var(--brand) border-box; }
+.composer-input { width: 100%; border: 0; outline: none; background: none; color: var(--text); resize: none; overflow: hidden; font-size: 16px; line-height: 1.4; padding: 6px 0; min-height: 34px; }
+.composer-input::placeholder { color: var(--faint); }
+.composer-tools { display: flex; align-items: center; gap: 8px; }
+.seg.seg-small { display: inline-grid; grid-template-columns: auto auto; padding: 3px; flex: none; }
+.seg.seg-small button { height: 36px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.btn.composer-add { margin-left: auto; min-height: 40px; min-width: 0; padding: 0 14px; }
+
+.note-list { background: var(--card-fill); border: 1px solid var(--card-edge); border-radius: 14px; overflow: hidden; }
+.note-list > * + * { border-top: 1px solid var(--line); }
+.note-list .swipe, .note-list .swipe-bg { border-radius: 0; }
+.note-row { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: var(--card); position: relative; }
+.note-row.important::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--orange-bd); }
+.note-row > .check { margin-top: 0; position: relative; }
+.note-row > .check::after { content: ""; position: absolute; inset: -8px; }
+.note-ico { width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--faint); }
+.note-body { flex: 1; min-width: 0; padding-top: 3px; cursor: pointer; border-radius: 6px; }
+.note-text { font-size: 15.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.note-text.done { color: var(--sub); text-decoration: line-through; }
+.note-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.note-meta .chip { height: 22px; }
+.note-link { color: var(--accent); text-decoration: underline; overflow-wrap: anywhere; }
+
+.done-block { display: flex; flex-direction: column; gap: 8px; }
+.done-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.done-toggle { display: flex; align-items: center; gap: 6px; border: 0; background: none; padding: 6px 0; color: var(--sub); min-height: 44px; }
+.done-toggle:disabled { cursor: default; }
+.done-toggle .section { margin: 0; }
+.done-chev { display: flex; transform: rotate(180deg); transition: transform .2s; }
+.done-chev.open { transform: rotate(-90deg); }
+
+/* vensters */
+.field select { border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); padding: 12px; font: inherit; font-size: 16px; width: 100%; outline: none; }
+.field select:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.date-row { display: flex; align-items: center; gap: 8px; }
+.date-row input { flex: 1; min-width: 0; min-height: 48px; }
+.note-dialog .setting-row, .project-dialog .setting-row { margin-top: 0; }
+.color-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.color-opt { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--pc); color: #fff; display: flex; align-items: center; justify-content: center; }
+.color-opt.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--accent); }
+
+/* pc: zijbalk */
+a.side-brand { color: var(--text); text-decoration: none; border-radius: 10px; }
+.side-switch { margin: 0 4px 6px; }
+.side-switch button { height: 34px; font-size: 13px; }
+.side-sub { padding: 12px 12px 2px; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--faint); }
+.side-btn { width: 100%; background: none; font: inherit; text-align: left; }
+.side-item .ellipsis { flex: 1; }
+.side-item .proj-dot { margin: 0 5px; }
+.side-count { margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tile); color: var(--sub);
+  font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.side-badge.red { background: var(--red-bd); }
+.side-more { color: var(--accent); font-size: 14px; }
+
+/* pc: keuzescherm over het volledige scherm */
+.start-desk .bar-row { height: 64px; padding: 0 20px; }
+.start-desk .content.start { width: 100%; max-width: 1180px; margin: 0 auto; padding: 56px 32px 48px; gap: 28px; }
+.start-desk .start-title { font-size: 36px; }
+.start-desk .module-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+.start-desk .module-card { min-height: 200px; padding: 32px 24px 32px 32px; gap: 24px; border-radius: 20px; }
+.start-desk .module-icon { width: 96px; height: 96px; border-radius: 26px; }
+.start-desk .module-icon .grad-icon { width: 50px !important; height: 50px !important; }
+.start-desk .module-title { font-size: 28px; }
+.start-desk .module-line { font-size: 16px; }
+
+/* pc: projecten over de volle breedte */
+.desk .scr-projects .proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 4px; }
+.desk .scr-projects .panel { display: flex; flex-direction: column; gap: 4px; }
+.desk .scr-projects .chip-row.wrap { margin: 10px 0 8px; }
+.proj-head-main { flex: 1; min-width: 0; }
+.proj-back { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.dash-title .proj-dot { width: 14px; height: 14px; margin-right: 12px; vertical-align: 3px; }
+.dash-title .pill { vertical-align: 6px; }
+.proj-head .proj-note { max-width: 900px; margin-top: 6px; }
+.proj-head .dash-actions { flex-wrap: wrap; }
+.proj-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.proj-cols .panel { display: flex; flex-direction: column; gap: 12px; }
+.proj-cols .panel-head { margin-bottom: 0; }
+@media (max-width: 1199px) { .proj-cols { grid-template-columns: minmax(0, 1fr); } }
+
+@media (hover: hover) and (pointer: fine) {
+  .module-card:hover { border-color: var(--border); transform: translateY(-1px); }
+  .note-row:hover { background: var(--hover); }
+  .side-btn:hover { background: var(--hover); }
+  .done-toggle:not(:disabled):hover { color: var(--accent); }
+}
+.screen.start-desk { max-width: none; margin: 0; }
+.done-head .btn.danger-text { border-color: transparent; min-height: 40px; }

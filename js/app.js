@@ -5,7 +5,7 @@ import { store } from './store.js';
 import { cloud } from './cloud.js';
 import { LoginScreen } from './cloud-card.js';
 import { usePrefs, ToastHost } from './ui.js';
-import { useRoute, scrollFor } from './router.js';
+import { useRoute, scrollFor, startAtChooser } from './router.js';
 import { unlockAudio } from './scanner.js';
 import { HomeScreen } from './screens/home.js';
 import { ItemScreen } from './screens/item.js';
@@ -16,6 +16,8 @@ import { SettingsScreen } from './screens/settings.js';
 import { UsageScreen } from './screens/usage.js';
 import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
+import { StartScreen } from './screens/start.js';
+import { ProjectsScreen, ProjectScreen } from './screens/projects.js';
 import { useDesktop, DesktopShell, DashboardScreen } from './desktop.js';
 
 function screenFor(path, desktop) {
@@ -31,6 +33,9 @@ function screenFor(path, desktop) {
     case 'verbruik': return html`<${UsageScreen} />`;
     case 'prullenmand': return html`<${TrashScreen} />`;
     case 'instellingen': return html`<${SettingsScreen} />`;
+    case 'start': return html`<${StartScreen} />`;
+    case 'projecten': return html`<${ProjectsScreen} />`;
+    case 'project': return html`<${ProjectScreen} key=${'p' + b} id=${b} />`;
     default: return desktop ? html`<${DashboardScreen} />` : html`<${HomeScreen} />`;
   }
 }
@@ -50,9 +55,9 @@ function App() {
   useLayoutEffect(() => { window.scrollTo(0, scrollFor(path)); }, [path]);
 
   // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
-  // Op een breed scherm: zijbalk en overzicht over de volle breedte (zie desktop.js).
+  // Op een breed scherm: zijbalk en overzicht over de volle breedte (zie desktop.js); het keuzescherm zonder zijbalk.
   const screen = !p.cloudUser ? html`<${LoginScreen} />`
-    : desktop ? html`<${DesktopShell} path=${path}>${screenFor(path, true)}<//>` : screenFor(path, false);
+    : desktop && path !== '/start' ? html`<${DesktopShell} path=${path}>${screenFor(path, true)}<//>` : screenFor(path, desktop);
   return html`${screen}<${ToastHost} />`;
 }
 
@@ -70,6 +75,7 @@ document.addEventListener('pointerdown', (e) => {
     document.getElementById('app').innerHTML = '<p style="padding:24px">De gegevens konden niet geladen worden. Open de app opnieuw.</p>';
     return;
   }
+  startAtChooser(); // de app opent op het keuzescherm (Inventaris of Projecten)
   render(html`<${App} />`, document.getElementById('app'));
   // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
   cloud.start();
