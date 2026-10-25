@@ -61,7 +61,7 @@ export function StepButton({ add, onClick, disabled, size = 44, label }) {
 // ---- balken
 
 export function BrandBar({ title, children, many }) {
-  return html`<header class="bar">
+  return html`<header class="bar brand-bar">
     <div class=${'bar-row' + (many ? ' many' : '')}>
       <span class="logo">
         <img src="img/logo-doos.svg" alt="" />
