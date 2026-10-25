@@ -127,8 +127,11 @@ export async function trashNotes(ids, text = 'Verwijderd') {
 const touch = () => window.matchMedia('(pointer: coarse)').matches;
 const grow = (el) => { if (!el) return; el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
 
-/** Snel een taak of notitie toevoegen. [kind] vast ('task' of 'note'), of zelf kiezen met de knoppen. */
-export function Composer({ projectId, kind: fixed, autoFocus }) {
+/**
+ * Snel een taak of notitie toevoegen. [kind] vast ('task' of 'note'), of zelf kiezen met de knoppen.
+ * [compact]: één regel met een ronde +knop, voor onderaan het scherm op de gsm.
+ */
+export function Composer({ projectId, kind: fixed, autoFocus, compact }) {
   const [text, setText] = useState('');
   const [kind, setKind] = useState(fixed ?? 'task');
   const ref = useRef(null);
@@ -150,6 +153,16 @@ export function Composer({ projectId, kind: fixed, autoFocus }) {
     e.preventDefault();
     add();
   };
+  if (compact) {
+    return html`<div class="composer compact">
+      <textarea ref=${ref} class="composer-input" rows="1" value=${text} enterkeyhint=${k === 'task' ? 'done' : 'enter'}
+        aria-label=${k === 'task' ? 'Nieuwe taak' : 'Nieuwe notitie'}
+        placeholder=${k === 'task' ? 'Taak toevoegen…' : 'Notitie toevoegen…'}
+        onInput=${(e) => { setText(e.currentTarget.value); grow(e.currentTarget); }} onKeyDown=${onKey}></textarea>
+      <button type="button" class="composer-send" aria-label="Toevoegen" disabled=${!text.trim()}
+        onPointerDown=${(e) => e.preventDefault()} onClick=${add}><${Icon} name="i_add" size=${24} /></button>
+    </div>`;
+  }
   return html`<div class="composer">
     <textarea ref=${ref} class="composer-input" rows="1" value=${text} enterkeyhint=${k === 'task' ? 'done' : 'enter'}
       aria-label=${k === 'task' ? 'Nieuwe taak' : 'Nieuwe notitie'}

@@ -842,3 +842,30 @@ a.side-brand { color: var(--text); text-decoration: none; border-radius: 10px; }
 }
 .screen.start-desk { max-width: none; margin: 0; }
 .done-head .btn.danger-text { border-color: transparent; min-height: 40px; }
+
+/* ---- project op de gsm (1.20.1): rustiger, met tabbladen en het invoervak onderaan */
+.content.proj-m { gap: 12px; padding-top: 12px; }
+.proj-sum { display: flex; flex-direction: column; gap: 8px; padding: 0 2px; }
+.proj-sum .proj-note { font-size: 14px; line-height: 1.45; }
+.proj-sum-row { display: flex; align-items: center; gap: 10px; }
+.proj-sum-text { font-size: 13px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+.proj-sum-row .progress { flex: 1; margin-top: 0; height: 6px; }
+.seg.proj-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.tab-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--tile); color: var(--sub);
+  font-size: 12px; line-height: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+.seg.proj-tabs button.on .tab-n { background: var(--accent); color: var(--on-accent); }
+.proj-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 32px 16px; color: var(--faint); text-align: center; }
+.proj-empty span { font-size: 15px; font-weight: 600; color: var(--sub); }
+.proj-m .done-head { margin-top: 6px; }
+.proj-m .done-head .section { margin: 0; }
+.link-btn { border: 0; background: none; padding: 8px 4px; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; min-height: 40px; align-self: flex-start; }
+.link-btn.danger { color: var(--red-fg); align-self: auto; }
+.note-list.dim .note-row { background: color-mix(in srgb, var(--card) 60%, transparent); }
+.note-list.dim .note-text { font-size: 14.5px; }
+.footer.composer-bar { padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+.composer.compact { flex: 1; flex-direction: row; align-items: flex-end; gap: 8px; padding: 4px 4px 4px 14px; border-radius: 24px; background: var(--card); }
+.composer.compact .composer-input { padding: 9px 0; min-height: 40px; max-height: 30vh; overflow-y: auto; }
+.composer-send { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--brand-diag); color: var(--on-brand); box-shadow: 0 4px 14px -5px var(--brand1); }
+.composer-send:disabled { background: var(--disabled); color: var(--disabled-fg); box-shadow: none; }
+.composer-send:active:not(:disabled) { transform: scale(.94); }

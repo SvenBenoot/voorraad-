@@ -6,7 +6,7 @@ import { Icon } from '../icons.js';
 import { store, liveProjects, notesOf, sortTasks, daysLeft, dayKey } from '../store.js';
 import {
   useData, useDesktop, BrandBar, TopBar, IconButton, Button, Footer, SearchField, FilterChip, Card, EmptyState, ConfirmDialog,
-  SectionHeader, SwipeRow, plural, toast, fmtDate,
+  SwipeRow, plural, toast, fmtDate,
 } from '../ui.js';
 import { go, back, home, toStart } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
@@ -157,6 +157,8 @@ export function ProjectsScreen() {
 
 // Per project onthouden of de afgevinkte taken open staan.
 const showDone = new Map();
+// Per project het laatst gekozen tabblad (Taken of Notities).
+const tabs = new Map();
 
 export function ProjectScreen({ id }) {
   const data = useData();
@@ -164,10 +166,10 @@ export function ProjectScreen({ id }) {
   const [editing, setEditing] = useState(false);
   const [openNote, setOpenNote] = useState(null);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
   const [doneOpen, setDoneOpenState] = useState(showDone.get(id) ?? false);
   const [askClear, setAskClear] = useState(false);
   const setDoneOpen = (v) => { showDone.set(id, v); setDoneOpenState(v); };
+  const [tab, setTab] = useState(tabs.get(id) ?? null);
 
   const p = data.projects.find((x) => x.id === id && !x.deletedAt);
   if (!p) {
@@ -205,14 +207,11 @@ export function ProjectScreen({ id }) {
       <//>`);
   const listOf = (items) => html`<div class="note-list">${items.map(row)}</div>`;
 
-  const showTasks = filter === 'all' || filter === 'tasks';
-  const showMemo = filter === 'all' || filter === 'notes';
-  const showDoneList = filter === 'all' || filter === 'done';
-  const doneVisible = filter === 'done' || doneOpen || words.length > 0;
+  const doneVisible = doneOpen || words.length > 0;
 
-  const doneBlock = done.length > 0 && showDoneList && html`<div class="done-block">
+  const doneBlock = done.length > 0 && html`<div class="done-block">
     <div class="done-head">
-      <button type="button" class="done-toggle" aria-expanded=${doneVisible} onClick=${() => setDoneOpen(!doneOpen)} disabled=${filter === 'done'}>
+      <button type="button" class="done-toggle" aria-expanded=${doneVisible} onClick=${() => setDoneOpen(!doneOpen)}>
         <span class=${'done-chev' + (doneVisible ? ' open' : '')}><${Icon} name="i_back" size=${18} /></span>
         <span class="section">Klaar · ${done.length}</span>
       </button>
@@ -221,22 +220,7 @@ export function ProjectScreen({ id }) {
     ${doneVisible && listOf(done)}
   </div>`;
 
-  const filterChips = all.length > 0 && html`<div class=${'chip-row' + (desktop ? ' tight wrap' : '')}>
-    <${FilterChip} selected=${filter === 'all'} onClick=${() => setFilter('all')}>Alles · ${all.length}<//>
-    <${FilterChip} selected=${filter === 'tasks'} onClick=${() => setFilter('tasks')}>Te doen · ${all.filter((n) => n.task && !n.done).length}<//>
-    <${FilterChip} selected=${filter === 'notes'} onClick=${() => setFilter('notes')}>Notities · ${all.filter((n) => !n.task).length}<//>
-    <${FilterChip} selected=${filter === 'done'} onClick=${() => setFilter('done')}>Klaar · ${totalDone}<//>
-  </div>`;
-
   const nothing = words.length > 0 && notes.length === 0 && html`<p class="sub nothing center">Niets gevonden.</p>`;
-
-  const progress = totalTasks > 0 && html`<div class="proj-stat">
-    <div class="progress-head">
-      <span class="bignum" style="font-size:34px">${pct}%</span>
-      <span class="sub">${totalDone} van ${plural(totalTasks, 'taak', 'taken')} klaar</span>
-    </div>
-    <div class="progress"><i style=${`width:${pct}%`}></i></div>
-  </div>`;
 
   const dialogs = html`
     ${editing && html`<${ProjectDialog} project=${p} onDismiss=${() => setEditing(false)} onDeleted=${() => home('/projecten')} />`}
@@ -291,31 +275,55 @@ export function ProjectScreen({ id }) {
     </div>`;
   }
 
+  // Gsm: rustig, in twee tabbladen. Bovenaan enkel de voortgang, onderaan het invoervak van het gekozen tabblad.
+  const openCount = all.filter((n) => n.task && !n.done).length;
+  const memoCount = all.filter((n) => !n.task).length;
+  const t = tab ?? (totalTasks === 0 && memoCount > 0 ? 'notes' : 'tasks');
+  const setT = (v) => { tabs.set(id, v); setTab(v); };
+  const doneShown = doneOpen || words.length > 0 ? done : done.slice(0, 3);
   return html`<div class="screen scr-project">
     <${TopBar} title=${p.name} onBack=${() => back('/projecten')}>
       <${IconButton} icon="push_pin" label=${p.pinned ? 'Losmaken' : 'Vastzetten'} cls=${p.pinned ? 'accent' : 'faint'} onClick=${pin} />
       ${all.length > 0 && html`<${IconButton} icon="i_share" label="Delen" onClick=${() => shareProject(p, all)} />`}
       <${IconButton} icon="i_edit" label="Project wijzigen" onClick=${() => setEditing(true)} />
     <//>
-    <main class="content">
-      ${(p.note || progress || p.done) && html`<${Card} cls=${'proj-card proj-info pc-' + p.color}>
-        ${p.done && html`<div class="proj-top"><span class="pill small-pill tone-green">Afgerond</span></div>`}
-        ${p.note && html`<div class="pre proj-note"><${Linked} text=${p.note} /></div>`}
-        ${progress}
-      <//>`}
-      <${Composer} projectId=${id} />
-      ${all.length > 5 && html`<${SearchField} value=${query} onInput=${setQuery} hint="Zoeken in dit project" />`}
-      ${all.length > 0 && filterChips}
-      ${all.length === 0 && html`<${EmptyState} icon="i_checklist" title="Nog niets in dit project" text="Voeg hierboven een taak of notitie toe." />`}
-      ${nothing}
-      ${showTasks && tasks.length > 0 && html`<${SectionHeader}>Te doen · ${tasks.length}<//>${listOf(tasks)}`}
-      ${showTasks && filter === 'tasks' && tasks.length === 0 && !words.length && html`<p class="sub ok-line"><${Icon} name="i_check_circle" size=${20} cls="tone-text-green" />Alles afgevinkt.</p>`}
-      ${showMemo && memo.length > 0 && html`<${SectionHeader}>Notities · ${memo.length}<//>${listOf(memo)}`}
-      ${doneBlock}
-      <div class="btn-row">
-        <${Button} icon=${p.done ? 'i_restore' : 'i_check_circle'} onClick=${finish}>${p.done ? 'Project heropenen' : 'Project afronden'}<//>
+    <main class="content proj-m">
+      ${(p.note || totalTasks > 0 || p.done) && html`<div class="proj-sum">
+        ${p.note && html`<div class="proj-note sub pre"><${Linked} text=${p.note} /></div>`}
+        ${(totalTasks > 0 || p.done) && html`<div class="proj-sum-row">
+          <span class=${'proj-dot pc-' + p.color}></span>
+          <span class="proj-sum-text">${p.done ? 'Afgerond' : `${totalDone} van ${plural(totalTasks, 'taak', 'taken')} klaar`}</span>
+          ${totalTasks > 0 && html`<div class="progress"><i style=${`width:${pct}%`}></i></div>`}
+        </div>`}
+      </div>`}
+
+      <div class="seg proj-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected=${t === 'tasks'} class=${t === 'tasks' ? 'on' : ''} onClick=${() => setT('tasks')}>
+          Taken${openCount > 0 && html`<b class="tab-n">${openCount}</b>`}</button>
+        <button type="button" role="tab" aria-selected=${t === 'notes'} class=${t === 'notes' ? 'on' : ''} onClick=${() => setT('notes')}>
+          Notities${memoCount > 0 && html`<b class="tab-n">${memoCount}</b>`}</button>
       </div>
+      ${all.length > 8 && html`<${SearchField} value=${query} onInput=${setQuery} hint="Zoeken in dit project" />`}
+      ${nothing}
+
+      ${t === 'tasks' && html`
+        ${tasks.length > 0 ? listOf(tasks) : !words.length && html`<div class="proj-empty">
+          <${Icon} name=${totalTasks ? 'i_check_circle' : 'i_checklist'} size=${32} cls=${totalTasks ? 'tone-text-green' : ''} />
+          <span>${totalTasks ? 'Alles afgevinkt' : 'Nog geen taken'}</span>
+          ${totalTasks > 0 && !p.done && html`<${Button} kind="primary" icon="i_check_circle" onClick=${finish}>Project afronden<//>`}
+        </div>`}
+        ${done.length > 0 && html`<div class="done-head">
+            <div class="section">Klaar · ${done.length}</div>
+            <button type="button" class="link-btn danger" onClick=${() => setAskClear(true)}>Wissen</button>
+          </div>
+          <div class="note-list dim">${doneShown.map(row)}</div>
+          ${done.length > doneShown.length && html`<button type="button" class="link-btn" onClick=${() => setDoneOpen(true)}>Toon alle ${done.length}</button>`}`}`}
+      ${t === 'notes' && (memo.length > 0 ? listOf(memo) : !words.length && html`<div class="proj-empty">
+        <${Icon} name="sticky_note_2" size=${32} /><span>Nog geen notities</span></div>`)}
     </main>
+    <footer class="footer composer-bar">
+      <${Composer} key=${t} projectId=${id} kind=${t === 'tasks' ? 'task' : 'note'} compact />
+    </footer>
     ${dialogs}
   </div>`;
 }
