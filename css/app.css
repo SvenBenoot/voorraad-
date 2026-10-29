@@ -815,7 +815,7 @@ body.sorting, body.sorting * { cursor: grabbing !important; user-select: none; -
 /* afmetingen */
 .dev-card .sub { margin-top: 2px; font-variant-numeric: tabular-nums; }
 .r3-card { padding: 10px; overflow: hidden; }
-.r3 { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; max-height: 60vh; }
+.r3 { display: block; width: 100%; height: auto; max-height: 60vh; }
 .r3-drag { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
 .r3-drag:active { cursor: grabbing; }
 .r3-edge { stroke: #66737c; stroke-linejoin: round; }
@@ -826,6 +826,9 @@ body.sorting, body.sorting * { cursor: grabbing !important; user-select: none; -
 .r3-text { fill: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .r3-chip { fill: var(--card); stroke: var(--line); opacity: .94; }
 .r3-text.note { fill: var(--accent); }
+.r3-dim.half { stroke: var(--green-bd); }
+.r3-guide, .r3-mark { stroke: var(--brand2); fill: none; }
+.r3-text.half { fill: var(--green-bd); }
 .r3-views button { font-size: 14px; }
 .dev-rows { display: flex; flex-direction: column; padding: 4px 16px; }
 .dev-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 11px 0; font-size: 15px; }

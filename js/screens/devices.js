@@ -96,42 +96,39 @@ export function DevicesScreen() {
 
 function singleScene(t, key) {
   const { width: w, height: h, depth: d } = t;
-  const g = Math.max(w, h, d) * 0.07;
+  const g = Math.max(w, h) * 0.07;
   const blocks = t.kind === 'tv' ? tvBlocks(t) : barBlocks(t);
-  const dims = [];
-  const notes = [];
-  if (key === 'side') {
-    dims.push({ a: [w, 0, 0], b: [w, h, 0], off: [0, 0, -g], text: fmtLen(h) });
-    dims.push({ a: [w, 0, 0], b: [w, 0, d], off: [0, -g, 0], text: fmtLen(d) });
-  } else if (key === 'back') {
-    dims.push({ a: [0, 0, 0], b: [w, 0, 0], off: [0, -g, 0], text: fmtLen(w) });
-    dims.push({ a: [0, 0, 0], b: [0, h, 0], off: [-g, 0, 0], text: fmtLen(h) });
-    if (t.vesaW && t.vesaH) notes.push({ at: [w / 2, h / 2 - t.vesaH / 2, 0], text: `VESA ${t.vesaW} × ${t.vesaH}`, dy: 1.4 });
-  } else {
-    dims.push({ a: [0, 0, d], b: [w, 0, d], off: [0, -g, 0], text: fmtLen(w) });
-    dims.push({ a: [w, 0, d], b: [w, h, d], off: [g, 0, 0], text: fmtLen(h) });
-    if (key === '3d') dims.push({ a: [w, h, 0], b: [w, h, d], off: [0, g, 0], text: fmtLen(d) });
-    // Het midden van de tv: vanaf de zijkant en vanaf de onderkant.
-    if (key === 'front' && t.kind === 'tv') {
-      dims.push({ a: [0, h / 2, d], b: [w / 2, h / 2, d], text: fmtLen(w / 2), dashed: true });
-      dims.push({ a: [w / 2, h / 2, d], b: [w / 2, 0, d], text: fmtLen(h / 2), dashed: true });
-    }
+  const center = [w / 2, h / 2, key === 'back' ? 0 : d];
+  if (key === 'back') {
+    const notes = t.vesaW && t.vesaH ? [{ at: [w / 2, h / 2 - t.vesaH / 2, 0], text: `VESA ${t.vesaW} × ${t.vesaH}`, dy: 1.4 }] : [];
+    return {
+      blocks, notes, center,
+      dims: [
+        { a: [0, h, 0], b: [w, h, 0], off: [0, g, 0], text: fmtLen(w) },
+        { a: [0, 0, 0], b: [0, h, 0], off: [-g, 0, 0], text: fmtLen(h) },
+      ],
+    };
   }
-  return { blocks, dims, notes };
+  // Vooraan: volle breedte boven, volle hoogte rechts. Het midden (kruisje) met zijn maten aan de andere kant:
+  // onderaan van de linkerkant tot het midden, links van de onderkant tot het midden.
+  return {
+    blocks, center,
+    dims: [
+      { a: [0, h, d], b: [w, h, d], off: [0, g, 0], text: fmtLen(w) },
+      { a: [w, 0, d], b: [w, h, d], off: [g, 0, 0], text: fmtLen(h) },
+      { a: [0, 0, d], b: [w / 2, 0, d], off: [0, -g, 0], text: fmtLen(w / 2), half: true },
+      { a: [0, 0, d], b: [0, h / 2, d], off: [-g, 0, 0], text: fmtLen(h / 2), half: true },
+    ],
+    guides: [{ a: center, b: [w / 2, -g, d] }, { a: center, b: [-g, h / 2, d] }],
+    marks: [center],
+  };
 }
 
-function ViewSwitch({ views, value, onPick }) {
-  const names = { '3d': '3D', front: 'Voor', side: 'Zij', back: 'Achter' };
-  return html`<div class="seg r3-views" role="group" aria-label="Weergave" style=${`grid-template-columns:repeat(${views.length},1fr)`}>
-    ${views.map((k) => html`<button type="button" key=${k} class=${value === k ? 'on' : ''} aria-pressed=${value === k} onClick=${() => onPick(k)}>${names[k]}</button>`)}
+function ViewSwitch({ value, onPick }) {
+  return html`<div class="seg r3-views" role="group" aria-label="Weergave">
+    ${[['front', 'Voor'], ['back', 'Achter']].map(([k, l]) => html`<button type="button" key=${k} class=${value === k ? 'on' : ''}
+      aria-pressed=${value === k} onClick=${() => onPick(k)}>${l}</button>`)}
   </div>`;
-}
-
-/** Weergave kiezen of zelf draaien (slepen); draaien telt als 3D. */
-function useView(start = '3d') {
-  const [key, setKey] = useState(start);
-  const [angles, setAngles] = useState(VIEWS[start]);
-  return { key, angles, pick: (k) => { setKey(k); setAngles(VIEWS[k]); }, rotate: (a) => { setKey('3d'); setAngles(a); } };
 }
 
 const Row = ({ label, children }) => html`<div class="dev-row"><span>${label}</span><b>${children}</b></div>`;
@@ -142,7 +139,7 @@ const combo = { tv: null, bar: null, gap: 0, above: false };
 export function DeviceScreen({ id }) {
   const data = useData();
   usePrefs();
-  const view = useView();
+  const [view, setView] = useState('front');
   const [editing, setEditing] = useState(null); // 'edit' of 'copy'
   const t = data.devices.find((x) => x.id === id && !x.deletedAt);
   if (!t) {
@@ -155,16 +152,16 @@ export function DeviceScreen({ id }) {
     </div>`;
   }
   const tv = t.kind === 'tv';
-  const scene = singleScene(t, view.key);
+  const scene = singleScene(t, view);
   return html`<div class="screen scr-device">
     <${TopBar} title=${deviceName(t)} onBack=${() => back('/afmetingen')}>
       <${IconButton} icon="i_copy" label="Kopiëren als nieuw model" onClick=${() => setEditing('copy')} />
       <${IconButton} icon="i_edit" label="Wijzigen" onClick=${() => setEditing('edit')} />
     <//>
     <main class="content">
-      <${ViewSwitch} views=${tv ? ['3d', 'front', 'side', 'back'] : ['3d', 'front', 'side']} value=${view.key} onPick=${view.pick} />
+      <${ViewSwitch} value=${view} onPick=${setView} />
       <div class="card r3-card">
-        <${Render3D} ...${scene} view=${view.angles} onRotate=${view.rotate} label=${deviceName(t) + ', ' + fmtDims(t)} />
+        <${Render3D} ...${scene} view=${VIEWS[view]} label=${deviceName(t) + ', ' + fmtDims(t)} />
       </div>
       <${Card} cls="dev-rows">
         <${Row} label="Soort">${kindLabel(t.kind)}<//>
@@ -188,7 +185,7 @@ export function DeviceScreen({ id }) {
 
 // ---- tv en soundbar samen
 
-function comboScene(tv, bar, gap, above, key) {
+function comboScene(tv, bar, gap, above) {
   const W = Math.max(tv.width, bar.width);
   const ty = above ? 0 : bar.height + gap;
   const by = above ? tv.height + gap : 0;
@@ -209,8 +206,7 @@ function comboScene(tv, bar, gap, above, key) {
     const g0 = above ? tv.height : bar.height;
     dims.push({ a: [W / 2, g0, z], b: [W / 2, g0 + gap, z], off: [g, 0, 0], text: fmtLen(gap) });
   }
-  if (key === '3d') dims.splice(3);
-  return { blocks, dims };
+  return { blocks, dims, center: [0, top / 2, z] };
 }
 
 const toField = (v, unit) => (v ? (unit === 'cm' ? String(v / 10).replace('.', ',') : String(v)) : '');
@@ -230,7 +226,6 @@ function PickCard({ kind, device, onClick }) {
 export function ComboScreen() {
   const data = useData();
   const p = usePrefs();
-  const view = useView('front');
   const [, redraw] = useState(0);
   const [picking, setPicking] = useState(null);
   const [gapText, setGapText] = useState(toField(combo.gap, p.unit));
@@ -238,7 +233,7 @@ export function ComboScreen() {
 
   const tv = combo.tv && store.device(combo.tv);
   const bar = combo.bar && store.device(combo.bar);
-  const scene = tv && bar && comboScene(tv, bar, combo.gap, combo.above, view.key);
+  const scene = tv && bar && comboScene(tv, bar, combo.gap, combo.above);
   const total = tv && bar ? tv.height + bar.height + combo.gap : 0;
   const diff = tv && bar ? bar.width - tv.width : 0;
 
@@ -263,9 +258,8 @@ export function ComboScreen() {
         </label>
       </div>
       ${scene ? html`
-        <${ViewSwitch} views=${['3d', 'front']} value=${view.key} onPick=${view.pick} />
         <div class="card r3-card">
-          <${Render3D} ...${scene} view=${view.angles} onRotate=${view.rotate} label=${'Totale hoogte ' + fmtLen(total)} />
+          <${Render3D} ...${scene} view=${VIEWS.front} label=${'Totale hoogte ' + fmtLen(total)} />
         </div>
         <${Card} cls="dev-rows">
           <div class="dev-total"><span>Totale hoogte</span><b>${fmtLen(total)}</b></div>
