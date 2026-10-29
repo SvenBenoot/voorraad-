@@ -11,7 +11,8 @@ import {
 } from '../ui.js';
 import { go, back, home, toStart } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
-import { Render3D, tvBlocks, barBlocks, VIEWS, fmtLen } from '../render3d.js';
+import { Render3D, tvBlocks, barBlocks, VIEWS, fmtLen, drawingPng } from '../render3d.js';
+import { ShareDialog } from './settings.js';
 
 const KIND_ICON = { tv: 'tv', bar: 'videobar' };
 const kindLabel = (k) => DEVICE_KINDS.find((x) => x.key === k).label;
@@ -131,6 +132,13 @@ function ViewSwitch({ value, onPick }) {
 
 const Row = ({ label, children }) => html`<div class="dev-row"><span>${label}</span><b>${children}</b></div>`;
 
+/** Venster om de tekening met de maten als afbeelding door te sturen. */
+function ShareImage({ title, rows, name, onDismiss }) {
+  return html`<${ShareDialog} make=${() => drawingPng(document.querySelector('.r3'), title, rows, name)} icon="i_share"
+    title="Afbeelding klaar" text="Stuur ze door of bewaar ze." button="Delen…" onDismiss=${onDismiss}
+    onShared=${(res) => { if (res === 'downloaded') toast('Afbeelding gedownload'); }} />`;
+}
+
 // Gekozen tv en soundbar bij Combineren (blijft staan zolang de app open is).
 const combo = { tv: null, bar: null, gap: 0, above: false };
 
@@ -139,6 +147,7 @@ export function DeviceScreen({ id }) {
   usePrefs();
   const [view, setView] = useState('front');
   const [editing, setEditing] = useState(null); // 'edit' of 'copy'
+  const [sharing, setSharing] = useState(false);
   const t = data.devices.find((x) => x.id === id && !x.deletedAt);
   if (!t) {
     return html`<div class="screen">
@@ -151,8 +160,15 @@ export function DeviceScreen({ id }) {
   }
   const tv = t.kind === 'tv';
   const scene = singleScene(t, view);
+  const rows = [
+    ['Soort', kindLabel(t.kind)], ['Breedte', fmtLen(t.width)], ['Hoogte', fmtLen(t.height)], ['Diepte', fmtLen(t.depth)],
+    ...(tv ? [['Midden', `${fmtLen(t.width / 2)} van de zijkant · ${fmtLen(t.height / 2)} van de onderkant`]] : []),
+    ...(tv && t.vesaW > 0 && t.vesaH > 0 ? [['VESA', `${t.vesaW} × ${t.vesaH}`]] : []),
+    ...(t.weight > 0 ? [['Gewicht', t.weight.toLocaleString('nl-BE') + ' kg']] : []),
+  ];
   return html`<div class="screen scr-device">
     <${TopBar} title=${deviceName(t)} onBack=${() => back('/afmetingen')}>
+      <${IconButton} icon="i_share" label="Delen als afbeelding" onClick=${() => setSharing(true)} />
       <${IconButton} icon="i_copy" label="Kopiëren als nieuw model" onClick=${() => setEditing('copy')} />
       <${IconButton} icon="i_edit" label="Wijzigen" onClick=${() => setEditing('edit')} />
     <//>
@@ -162,13 +178,7 @@ export function DeviceScreen({ id }) {
         <${Render3D} ...${scene} view=${VIEWS[view]} label=${deviceName(t) + ', ' + fmtDims(t)} />
       </div>
       <${Card} cls="dev-rows">
-        <${Row} label="Soort">${kindLabel(t.kind)}<//>
-        <${Row} label="Breedte">${fmtLen(t.width)}<//>
-        <${Row} label="Hoogte">${fmtLen(t.height)}<//>
-        <${Row} label="Diepte">${fmtLen(t.depth)}<//>
-        ${tv && html`<${Row} label="Midden">${fmtLen(t.width / 2)} van de zijkant · ${fmtLen(t.height / 2)} van de onderkant<//>`}
-        ${tv && t.vesaW > 0 && t.vesaH > 0 && html`<${Row} label="VESA">${t.vesaW} × ${t.vesaH}<//>`}
-        ${t.weight > 0 && html`<${Row} label="Gewicht">${t.weight.toLocaleString('nl-BE')} kg<//>`}
+        ${rows.map(([l, v]) => html`<${Row} key=${l} label=${l}>${v}<//>`)}
       <//>
       ${t.note && html`<${Card}><div class="sub pre">${t.note}</div><//>`}
     </main>
@@ -178,6 +188,8 @@ export function DeviceScreen({ id }) {
     ${editing && html`<${DeviceDialog} key=${editing} device=${editing === 'edit' ? t : null} copyOf=${editing === 'copy' ? t : null}
       onDismiss=${() => setEditing(null)} onSaved=${(x) => { if (editing === 'copy') go('/afmeting/' + x.id, { replace: true }); }}
       onDeleted=${() => home('/afmetingen')} />`}
+    ${sharing && html`<${ShareImage} title=${deviceName(t) + (view === 'back' ? ' · achterkant' : '')} rows=${rows} name=${deviceName(t)}
+      onDismiss=${() => setSharing(false)} />`}
   </div>`;
 }
 
@@ -228,6 +240,7 @@ export function ComboScreen() {
   const p = usePrefs();
   const [, redraw] = useState(0);
   const [picking, setPicking] = useState(null);
+  const [sharing, setSharing] = useState(false);
   const [gapText, setGapText] = useState(toField(combo.gap, p.unit));
   const set = (patch) => { Object.assign(combo, patch); redraw((n) => n + 1); };
 
@@ -236,9 +249,17 @@ export function ComboScreen() {
   const scene = tv && bar && comboScene(tv, bar, combo.gap, combo.above);
   const total = tv && bar ? tv.height + bar.height + combo.gap : 0;
   const diff = tv && bar ? bar.width - tv.width : 0;
+  const rows = scene ? [
+    ['Totale hoogte', fmtLen(total)], ['Tv', deviceName(tv)], ['Video soundbar', `${deviceName(bar)} · ${combo.above ? 'boven' : 'onder'} de tv`],
+    ['Breedte tv', fmtLen(tv.width)], ['Breedte soundbar', fmtLen(bar.width)],
+    ['Verschil', diff === 0 ? 'Even breed' : `Soundbar ${fmtLen(Math.abs(diff))} ${diff > 0 ? 'breder' : 'smaller'}`],
+    ...(combo.gap > 0 ? [['Tussenruimte', fmtLen(combo.gap)]] : []),
+  ] : [];
 
   return html`<div class="screen scr-combo">
-    <${TopBar} title="Combineren" onBack=${() => back('/afmetingen')} />
+    <${TopBar} title="Combineren" onBack=${() => back('/afmetingen')}>
+      ${scene && html`<${IconButton} icon="i_share" label="Delen als afbeelding" onClick=${() => setSharing(true)} />`}
+    <//>
     <main class="content">
       <${PickCard} kind="tv" device=${tv} onClick=${() => setPicking('tv')} />
       <${PickCard} kind="bar" device=${bar} onClick=${() => setPicking('bar')} />
@@ -272,6 +293,8 @@ export function ComboScreen() {
     </main>
     ${picking && html`<${DevicePicker} kind=${picking} devices=${liveDevices(data).filter((x) => x.kind === picking).sort(byName)}
       onPick=${(x) => { setPicking(null); set({ [picking]: x.id }); }} onDismiss=${() => setPicking(null)} />`}
+    ${sharing && scene && html`<${ShareImage} title=${deviceName(tv) + ' + ' + deviceName(bar)} rows=${rows}
+      name=${deviceName(tv) + ' + ' + deviceName(bar)} onDismiss=${() => setSharing(false)} />`}
   </div>`;
 }
 

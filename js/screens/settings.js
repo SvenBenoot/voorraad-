@@ -20,7 +20,7 @@ const isStandalone = () => window.matchMedia('(display-mode: standalone)').match
  * Venster dat een bestand klaarmaakt en daarna met één tik het deelmenu opent.
  * (Delen moet rechtstreeks uit een tik komen, daarom eerst maken en dan pas de knop.)
  */
-function ShareDialog({ make, icon, title, text, button, onShared, onDismiss }) {
+export function ShareDialog({ make, icon, title, text, button, onShared, onDismiss }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState(false);
   useEffect(() => {

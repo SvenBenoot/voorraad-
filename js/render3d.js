@@ -237,3 +237,70 @@ export function Render3D({ blocks, dims = [], notes = [], guides = [], marks = [
         text-anchor="middle" dominant-baseline="central">${l.text}</text>`)}
   </svg>`;
 }
+
+// ---- als afbeelding delen
+
+// In een losse afbeelding gelden de stijlen van de app niet: de kleuren (altijd het lichte thema) gaan er rechtstreeks in.
+const LIGHT_STYLE = {
+  'r3-edge': { stroke: '#66737c' },
+  'r3-ext': { stroke: '#5e6c77', fill: 'none', opacity: '.7' },
+  'r3-dim': { stroke: '#207088', fill: 'none', 'stroke-linecap': 'round' },
+  half: { stroke: '#1d7c53' },
+  'r3-vesa-line': { stroke: '#30cf8a' },
+  'r3-vesa-hole': { stroke: '#30cf8a' },
+  'r3-chip': { fill: '#ffffff', stroke: '#e4eaed' },
+  'r3-text': { fill: '#191d1f', 'font-weight': '600' },
+  note: { fill: '#207088' },
+};
+const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+/**
+ * De tekening op het scherm als PNG, met [title] erboven en de maten ([rows] = [label, waarde]) eronder.
+ * Wit, zodat ze ook afgedrukt of in een e-mail goed leesbaar is.
+ */
+export async function drawingPng(svg, title, rows, name) {
+  const W = 1400, pad = 64;
+  const clone = svg.cloneNode(true);
+  for (const el of clone.querySelectorAll('[class]')) {
+    const cls = el.getAttribute('class').split(/\s+/);
+    for (const c of cls) {
+      const st = LIGHT_STYLE[c];
+      if (!st) continue;
+      // "half" kleurt een tekst groen met fill, een lijn met stroke.
+      for (const [k, v] of Object.entries(c === 'half' && el.tagName === 'text' ? { fill: '#1d7c53' } : st)) el.setAttribute(k, v);
+    }
+    el.removeAttribute('class');
+  }
+  const [, , vw, vh] = clone.getAttribute('viewBox').split(/\s+/).map(Number);
+  const dw = W - 2 * pad, dh = Math.round((dw * vh) / vw);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', dw);
+  clone.setAttribute('height', dh);
+  clone.setAttribute('font-family', FONT);
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  await img.decode();
+
+  const rowH = 56, top = 150;
+  const H = top + dh + 48 + rows.length * rowH + pad;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const g = canvas.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  const brand = g.createLinearGradient(0, 0, W, 0);
+  brand.addColorStop(0, '#30a9ce'); brand.addColorStop(1, '#30cf8a');
+  g.fillStyle = brand; g.fillRect(0, 0, W, 10);
+  g.fillStyle = '#191d1f'; g.font = `700 48px ${FONT}`; g.textBaseline = 'alphabetic';
+  g.fillText(title, pad, 100);
+  g.drawImage(img, pad, top, dw, dh);
+  let y = top + dh + 48;
+  g.font = `400 32px ${FONT}`;
+  for (const [label, value] of rows) {
+    g.fillStyle = '#e4eaed'; g.fillRect(pad, y, W - 2 * pad, 2);
+    g.fillStyle = '#455663'; g.textAlign = 'left'; g.font = `400 32px ${FONT}`; g.fillText(label, pad, y + 40);
+    g.fillStyle = '#191d1f'; g.textAlign = 'right'; g.font = `600 32px ${FONT}`; g.fillText(value, W - pad, y + 40);
+    y += rowH;
+  }
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+  return new File([blob], (name.replace(/[^\w\- ]+/g, '').trim() || 'afmetingen') + '.png', { type: 'image/png' });
+}
