@@ -109,7 +109,7 @@ function singleScene(t, key) {
       ],
     };
   }
-  // Vooraan: volle breedte boven, volle hoogte rechts. Het midden (kruisje) met zijn maten aan de andere kant:
+  // Vooraan: volle breedte boven, volle hoogte rechts. Het midden aan de andere kant (in het groen):
   // onderaan van de linkerkant tot het midden, links van de onderkant tot het midden.
   return {
     blocks, center,
@@ -119,8 +119,6 @@ function singleScene(t, key) {
       { a: [0, 0, d], b: [w / 2, 0, d], off: [0, -g, 0], text: fmtLen(w / 2), half: true },
       { a: [0, 0, d], b: [0, h / 2, d], off: [-g, 0, 0], text: fmtLen(h / 2), half: true },
     ],
-    guides: [{ a: center, b: [w / 2, -g, d] }, { a: center, b: [-g, h / 2, d] }],
-    marks: [center],
   };
 }
 
@@ -201,6 +199,8 @@ function comboScene(tv, bar, gap, above) {
     { a: [-bar.width / 2, barEdge, bar.depth], b: [bar.width / 2, barEdge, bar.depth], off: [0, above ? g : -g, 0], text: fmtLen(bar.width) },
     { a: [W / 2, ty, z], b: [W / 2, ty + tv.height, z], off: [g, 0, 0], text: fmtLen(tv.height) },
     { a: [W / 2, by, z], b: [W / 2, by + bar.height, z], off: [g, 0, 0], text: fmtLen(bar.height) },
+    // Het midden in de breedte (beide toestellen hangen gecentreerd), aan de kant van de soundbar, onder diens breedte.
+    { a: [-W / 2, barEdge, z], b: [0, barEdge, z], off: [0, above ? 2.2 * g : -2.2 * g, 0], text: fmtLen(W / 2), half: true },
   ];
   if (gap > top * 0.06) {
     const g0 = above ? tv.height : bar.height;
