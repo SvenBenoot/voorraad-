@@ -46,9 +46,9 @@ export async function shareText(text) {
 // ---- reservekopie
 
 // Instellingen die mee in de reservekopie gaan (niet: login en sync-tijden, die horen bij het toestel).
-const BACKUP_PREFS = ['theme', 'scanSound', 'sort', 'startAt', 'projectSort'];
+const BACKUP_PREFS = ['theme', 'scanSound', 'sort', 'startAt', 'projectSort', 'unit'];
 
-/** Artikels, prullenmand, logboek, projecten en notities (voorraad.json) en je instellingen (instellingen.json). */
+/** Artikels, prullenmand, logboek, projecten, notities en afmetingen (voorraad.json) en je instellingen (instellingen.json). */
 export async function makeBackup() {
   const settings = Object.fromEntries(BACKUP_PREFS.map((k) => [k, prefs.value[k]]));
   const files = {

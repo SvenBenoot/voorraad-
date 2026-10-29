@@ -32,6 +32,11 @@ const AV = {
   tripod: line(rect(8.5, 2.5, 15.5, 7)) + line('M12 7v4M12 11L5.5 21.5M12 11l6.5 10.5M12 11v10.5'),
   drag: solid(c(9, 6, 1.7) + c(15, 6, 1.7) + c(9, 12, 1.7) + c(15, 12, 1.7) + c(9, 18, 1.7) + c(15, 18, 1.7)),
   truss: line(rect(2.5, 7.5, 21.5, 16.5)) + line('M2.5 16.5l4.75-9 4.75 9 4.75-9 4.75 9'),
+  // Video soundbar (balk met camera in het midden) en tv met soundbar eronder, voor Afmetingen.
+  videobar: line('M3.5 9h17a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-17A1.5 1.5 0 0 1 2 13.5v-3A1.5 1.5 0 0 1 3.5 9z')
+    + line(c(12, 12, 1.9)) + solid(c(5.8, 12, 0.8) + c(18.2, 12, 0.8)),
+  combo: line(rect(3, 3.5, 21, 14.5)) + line('M6 17.5h12a1 1 0 0 1 0 3H6a1 1 0 0 1 0-3z'),
+  i_copy: solid('M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z'),
 };
 
 const ALL = { ...MI, ...AV };

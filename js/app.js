@@ -18,6 +18,7 @@ import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
 import { StartScreen } from './screens/start.js';
 import { ProjectsScreen, ProjectScreen, ProjectTrashScreen } from './screens/projects.js';
+import { DevicesScreen, DeviceScreen, ComboScreen, DeviceTrashScreen } from './screens/devices.js';
 import { useDesktop, DesktopShell } from './desktop.js';
 
 function screenFor(path) {
@@ -37,6 +38,10 @@ function screenFor(path) {
     case 'projecten': return html`<${ProjectsScreen} />`;
     case 'verwijderde-projecten': return html`<${ProjectTrashScreen} />`;
     case 'project': return html`<${ProjectScreen} key=${'p' + b} id=${b} />`;
+    case 'afmetingen': return html`<${DevicesScreen} />`;
+    case 'afmeting': return html`<${DeviceScreen} key=${'d' + b} id=${b} />`;
+    case 'combineren': return html`<${ComboScreen} />`;
+    case 'verwijderde-afmetingen': return html`<${DeviceTrashScreen} />`;
     default: return html`<${HomeScreen} />`;
   }
 }
@@ -76,7 +81,7 @@ document.addEventListener('pointerdown', (e) => {
     document.getElementById('app').innerHTML = '<p style="padding:24px">De gegevens konden niet geladen worden. Open de app opnieuw.</p>';
     return;
   }
-  startAtChooser(prefs.value.startAt); // keuzescherm, of Inventaris/Projecten (Instellingen)
+  startAtChooser(prefs.value.startAt); // keuzescherm, of Inventaris/Projecten/Afmetingen (Instellingen)
   render(html`<${App} />`, document.getElementById('app'));
   // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
   cloud.start();
