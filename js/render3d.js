@@ -112,7 +112,7 @@ export function barBlocks(s, x = 0, y = 0) {
  * het toestel komt), [notes] = losse labels { at, text, dy }. [view] = [draaien, kantelen]; met [onRotate] kan je
  * slepen om te draaien.
  */
-export function Render3D({ blocks, dims = [], notes = [], view, onRotate, label }) {
+export function Render3D({ blocks, dims = [], notes = [], guides = [], marks = [], center, view, onRotate, label }) {
   const drag = useRef(null);
   const [id] = useState(() => 'r3' + Math.random().toString(36).slice(2, 7));
   const { rot, P, plane } = camera(view);
@@ -158,7 +158,7 @@ export function Render3D({ blocks, dims = [], notes = [], view, onRotate, label 
     const t = fs * 0.35;
     const tick = (p) => `M${p[0] - (u[0] - o[0]) * t} ${p[1] - (u[1] - o[1]) * t}L${p[0] + (u[0] - o[0]) * t} ${p[1] + (u[1] - o[1]) * t}`;
     const ext2 = (p, q) => (Math.hypot(...sub(q, p)) > 1 ? `M${p[0]} ${p[1]}L${q[0] + o[0] * t} ${q[1] + o[1] * t}` : '');
-    lines.push({ d: `M${A[0]} ${A[1]}L${B[0]} ${B[1]}` + (m.dashed ? '' : tick(A) + tick(B)), ext: ext2(a, A) + ext2(b, B), dashed: m.dashed });
+    lines.push({ d: `M${A[0]} ${A[1]}L${B[0]} ${B[1]}` + (m.dashed ? '' : tick(A) + tick(B)), ext: ext2(a, A) + ext2(b, B), dashed: m.dashed, half: m.half });
     add(A); add(B);
     // Tekst naast de lijn, aan de buitenkant; bij een staande lijn links of rechts ervan.
     const w = m.text.length * fs * 0.56;
@@ -170,7 +170,7 @@ export function Render3D({ blocks, dims = [], notes = [], view, onRotate, label 
     for (let i = 0; i < 4 && hit(at); i++) {
       if (side) at[0] += side * (w + fs * 0.6); else at[1] += Math.sign(o[1] || -1) * fs * 1.5;
     }
-    labels.push({ at, text: m.text, w });
+    labels.push({ at, text: m.text, w, half: m.half });
   }
   for (const n of notes) {
     const p = P(n.at);
@@ -179,9 +179,16 @@ export function Render3D({ blocks, dims = [], notes = [], view, onRotate, label 
   }
   for (const l of labels) { add([l.at[0] - l.w / 2, l.at[1] - fs * 0.7]); add([l.at[0] + l.w / 2, l.at[1] + fs * 0.7]); }
 
+  // Hulplijnen (bv. van het midden naar zijn maten) en kruisjes (het midden).
+  const guideLines = guides.map((l) => [P(l.a), P(l.b)]);
+  const markPts = marks.map((p) => P(p));
+
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   const pad = fs * 0.8;
-  const box = [Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad, Math.max(...ys) - Math.min(...ys) + 2 * pad];
+  let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+  // Het toestel in het midden van de tekening, ook als er links minder maten staan dan rechts.
+  if (center) { const c = P(center)[0]; const r = Math.max(c - x0, x1 - c); x0 = c - r; x1 = c + r; }
+  const box = [x0, Math.min(...ys) - pad, x1 - x0, Math.max(...ys) - Math.min(...ys) + 2 * pad];
 
   const down = (e) => {
     if (!onRotate) return;
@@ -217,12 +224,16 @@ export function Render3D({ blocks, dims = [], notes = [], view, onRotate, label 
       <polygon points=${f.pts.map((p) => p.join(',')).join(' ')} fill=${f.fill} class="r3-edge" stroke-width=${sw * 0.6} />
       ${f.deco && html`<g transform=${plane(f.deco.z)}>${f.deco.svg}</g>`}
     </g>`)}
+    ${guideLines.map(([a, b]) => html`<path d=${`M${a[0]} ${a[1]}L${b[0]} ${b[1]}`} class="r3-guide" stroke-width=${sw * 0.8}
+      stroke-dasharray=${`${fs * 0.3} ${fs * 0.22}`} />`)}
+    ${markPts.map((p) => html`<circle cx=${p[0]} cy=${p[1]} r=${fs * 0.45} class="r3-mark" stroke-width=${sw * 1.1} />
+      <path d=${`M${p[0] - fs * 0.75} ${p[1]}H${p[0] + fs * 0.75}M${p[0]} ${p[1] - fs * 0.75}V${p[1] + fs * 0.75}`} class="r3-mark" stroke-width=${sw * 1.1} />`)}
     ${lines.map((l) => html`<path d=${l.ext} class="r3-ext" stroke-width=${sw * 0.7} />
-      <path d=${l.d} class=${'r3-dim' + (l.dashed ? ' dashed' : '')} stroke-width=${sw * (l.dashed ? 1 : 1.1)}
+      <path d=${l.d} class=${'r3-dim' + (l.dashed ? ' dashed' : '') + (l.half ? ' half' : '')} stroke-width=${sw * (l.dashed ? 1 : 1.1)}
         stroke-dasharray=${l.dashed ? `${fs * 0.35} ${fs * 0.25}` : null} />`)}
     ${labels.map((l) => html`<rect x=${l.at[0] - l.w / 2 - fs * 0.3} y=${l.at[1] - fs * 0.72} width=${l.w + fs * 0.6} height=${fs * 1.44}
         rx=${fs * 0.35} class="r3-chip" stroke-width=${sw * 0.6} />
-      <text x=${l.at[0]} y=${l.at[1]} font-size=${fs} class=${'r3-text' + (l.note ? ' note' : '')}
+      <text x=${l.at[0]} y=${l.at[1]} font-size=${fs} class=${'r3-text' + (l.note ? ' note' : '') + (l.half ? ' half' : '')}
         text-anchor="middle" dominant-baseline="central">${l.text}</text>`)}
   </svg>`;
 }
