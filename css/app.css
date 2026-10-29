@@ -668,7 +668,8 @@ button.check.on { background: var(--brand-diag); color: var(--on-brand); }
 /* pc: zijbalk */
 a.side-brand { color: var(--text); text-decoration: none; border-radius: 10px; }
 .side-switch { margin: 0 4px 6px; }
-.side-switch button { height: 34px; font-size: 13px; }
+.side-switch { grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.side-switch button { height: 34px; font-size: 12px; padding: 0 2px; }
 .side-sub { padding: 12px 12px 2px; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--faint); }
 .side-btn { width: 100%; background: none; font: inherit; text-align: left; }
 .side-item .ellipsis { flex: 1; }
@@ -682,7 +683,7 @@ a.side-brand { color: var(--text); text-decoration: none; border-radius: 10px; }
 .start-desk .bar-row { height: 64px; padding: 0 20px; }
 .start-desk .content.start { width: 100%; max-width: 1180px; margin: 0 auto; padding: 56px 32px 48px; gap: 28px; }
 .start-desk .start-title { font-size: 36px; }
-.start-desk .module-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+.start-desk .module-grid { grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .start-desk .module-card { min-height: 200px; padding: 32px 24px 32px 32px; gap: 24px; border-radius: 20px; }
 .start-desk .module-icon { width: 96px; height: 96px; border-radius: 26px; }
 .start-desk .module-icon .grad-icon { width: 50px !important; height: 50px !important; }
@@ -810,3 +811,41 @@ body.sorting, body.sorting * { cursor: grabbing !important; user-select: none; -
 .btn.all-done-btn { flex: none; min-height: 38px; min-width: 0; padding: 0 14px; }
 .note-text.done span[style] { color: inherit !important; }
 
+
+/* afmetingen */
+.dev-card .sub { margin-top: 2px; font-variant-numeric: tabular-nums; }
+.r3-card { padding: 10px; overflow: hidden; }
+.r3 { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; max-height: 60vh; }
+.r3-drag { touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.r3-drag:active { cursor: grabbing; }
+.r3-edge { stroke: #66737c; stroke-linejoin: round; }
+.r3-ext { stroke: var(--faint); fill: none; opacity: .7; }
+.r3-dim { stroke: var(--accent); fill: none; stroke-linecap: round; }
+.r3-vesa-line { stroke: var(--brand2); }
+.r3-vesa-hole { stroke: var(--brand2); }
+.r3-text { fill: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.r3-chip { fill: var(--card); stroke: var(--line); opacity: .94; }
+.r3-text.note { fill: var(--accent); }
+.r3-views button { font-size: 14px; }
+.dev-rows { display: flex; flex-direction: column; padding: 4px 16px; }
+.dev-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 11px 0; font-size: 15px; }
+.dev-row + .dev-row, .dev-total + .dev-row { border-top: 1px solid var(--line); }
+.dev-row > span { color: var(--sub); }
+.dev-row > b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.dev-total { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; }
+.dev-total > span { font-size: 15px; font-weight: 600; }
+.dev-total > b { font-size: 26px; font-weight: 700; background: var(--number); -webkit-background-clip: text; background-clip: text; color: transparent; font-variant-numeric: tabular-nums; }
+.dev-grid { display: grid; gap: 10px; }
+.dev-grid.two { grid-template-columns: 1fr 1fr; }
+.dev-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+.dev-grid .field { min-width: 0; }
+.dev-grid input { width: 100%; min-width: 0; }
+.dev-grid .field-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev-pick { padding: 12px 14px; }
+.combo-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: end; }
+.combo-opts .seg button { font-size: 14px; }
+.combo-gap input { width: 100%; }
+.dev-pick-list { display: flex; flex-direction: column; max-height: 50vh; overflow: auto; margin: 0 -8px; }
+.dev-pick-text { display: flex; flex-direction: column; min-width: 0; }
+.dev-pick-text b { font-weight: 600; }
+.device-dialog .seg button { font-size: 14px; }

@@ -1,5 +1,5 @@
 // ---- Instellingen
-// Weergave, projecten, productlijst, Excel, labels, prullenmand, reservekopie en "Over deze app".
+// Weergave, projecten, afmetingen, productlijst, Excel, labels, prullenmand, reservekopie en "Over deze app".
 // Wijzigingen worden meteen bewaard.
 import { html, useEffect, useRef, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
@@ -93,7 +93,9 @@ export function SettingsScreen() {
   };
 
   const themes = [['SYSTEM', 'Volgens systeem'], ['LIGHT', 'Licht'], ['DARK', 'Donker']];
-  const starts = [['/start', 'Keuzescherm'], ['/', 'Inventaris'], ['/projecten', 'Projecten']];
+  const starts = [['/start', 'Keuzescherm'], ['/', 'Inventaris'], ['/projecten', 'Projecten'], ['/afmetingen', 'Afmetingen']];
+  const units = [['mm', 'Millimeter'], ['cm', 'Centimeter']];
+  const deletedDevices = data.devices.filter((x) => x.deletedAt).length;
   const projectSorts = [['RECENT', 'Laatst gewijzigd'], ['NAME', 'Naam']];
   const deletedProjects = data.projects.filter((x) => x.deletedAt).length;
   const liveCount = (raw) => (raw.projects ?? []).filter((x) => x && !x.deletedAt).length;
@@ -144,6 +146,12 @@ export function SettingsScreen() {
         <p class="small faint">Vastgezette projecten staan altijd bovenaan.</p>
       <//></section>
 
+      <section class="set-block"><${SectionHeader}>Afmetingen<//>
+      <${Card}>
+        <div class="set-label">Maten in</div>
+        <div class="chip-row tight">${units.map(([k, l]) => html`<${FilterChip} selected=${p.unit === k} onClick=${() => prefs.set({ unit: k })}>${l}<//>`)}</div>
+      <//></section>
+
       <section class="set-block"><${SectionHeader}>Productlijst<//>
       <${Card}>
         <div class="card-title">Producten uit het CRM</div>
@@ -181,12 +189,16 @@ export function SettingsScreen() {
       <${Card} onClick=${() => go('/verwijderde-projecten')}>
         <div class="card-title">Verwijderde projecten</div>
         <p class="small faint">${deletedProjects ? plural(deletedProjects, 'project', 'projecten') + ' · 30 dagen bewaard' : 'Leeg'}</p>
+      <//>
+      <${Card} onClick=${() => go('/verwijderde-afmetingen')}>
+        <div class="card-title">Verwijderde toestellen</div>
+        <p class="small faint">${deletedDevices ? plural(deletedDevices, 'toestel', 'toestellen') + ' · 30 dagen bewaard' : 'Leeg'}</p>
       <//></section>
 
       <section class="set-block"><${SectionHeader}>Reservekopie<//>
       <${Card}>
         <div class="card-title">Kopie als bestand</div>
-        <p class="sub">Artikels, projecten, notities en instellingen in één bestand.</p>
+        <p class="sub">Artikels, projecten, afmetingen en instellingen in één bestand.</p>
         <p class="small faint">${p.lastBackup ? 'Laatste kopie: ' + fmtDate(p.lastBackup) : 'Nog geen kopie gemaakt.'}</p>
         <div class="btn-row wrap">
           <${Button} kind="primary" icon="i_backup" onClick=${() => setShare('backup')}>Reservekopie maken…<//>

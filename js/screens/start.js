@@ -1,9 +1,9 @@
 // ---- Keuzescherm
-// Na het inloggen (en telkens je de app opent): kiezen tussen de inventaris en de projecten.
+// Na het inloggen (en telkens je de app opent): kiezen tussen de inventaris, de projecten en de afmetingen.
 // Onderaan wat binnenkort moet gebeuren, zodat je dat meteen ziet.
 import { html, useState } from '../../lib/preact-htm.js';
 import { GradientIcon } from '../icons.js';
-import { needsRestock, liveProjects, daysUntil, sortTasks } from '../store.js';
+import { needsRestock, liveProjects, liveDevices, daysUntil, sortTasks } from '../store.js';
 import { useData, BrandBar, IconButton, plural, useDesktop } from '../ui.js';
 import { go } from '../router.js';
 import { SyncButton, SyncDialog } from '../cloud-card.js';
@@ -51,6 +51,13 @@ export function StartScreen() {
     ...(overdue > 0 ? [{ text: overdue + ' te laat', tone: 'red' }] : openTasks > 0 ? [{ text: plural(openTasks, 'open taak', 'open taken') }] : [{ text: 'Alles afgevinkt', tone: 'green' }]),
   ];
 
+  const devices = liveDevices(data);
+  const tvs = devices.filter((x) => x.kind === 'tv').length;
+  const deviceLines = devices.length === 0 ? [{ text: 'Nog geen toestellen' }] : [
+    { text: plural(devices.length, 'toestel', 'toestellen') },
+    { text: [tvs && plural(tvs, 'tv', "tv's"), devices.length - tvs && plural(devices.length - tvs, 'soundbar', 'soundbars')].filter(Boolean).join(' · ') },
+  ];
+
   return html`<div class=${'screen scr-start' + (desktop ? ' start-desk' : '')}>
     <${BrandBar} title="Start">
       <${SyncButton} onClick=${() => setSyncInfo(true)} />
@@ -64,6 +71,7 @@ export function StartScreen() {
       <div class="module-grid">
         <${ModuleCard} icon="archive" title="Inventaris" lines=${inventoryLines} onClick=${() => go('/')} />
         <${ModuleCard} icon="folder" title="Projecten" lines=${projectLines} onClick=${() => go('/projecten')} />
+        <${ModuleCard} icon="square_foot" title="Afmetingen" lines=${deviceLines} onClick=${() => go('/afmetingen')} />
       </div>
       ${soon.length > 0 && html`<section class="start-soon">
         <div class="section">Binnenkort · ${soon.length}</div>

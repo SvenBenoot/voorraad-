@@ -10,12 +10,13 @@
 //   voorraad/data/movements/{id}   één document per regel in het logboek (id = tijd_artikel, at = servertijd)
 //   voorraad/data/projects/{id}    één document per project (sinds 1.20; deletedAt = in de prullenmand, at = servertijd)
 //   voorraad/data/notes/{id}       één document per notitie of taak, met projectId (zelfde velden deletedAt en at)
+//   voorraad/data/devices/{id}     één document per toestel bij Afmetingen (sinds 1.24; zelfde velden deletedAt en at)
 //   Definitief gewist (artikel, project of notitie): het document blijft nog 30 dagen staan met purged = tijd van wissen.
 //   Een ander toestel leest enkel wat sinds de vorige keer wijzigde, en zou een echt verwijderd document niet merken.
 //   voorraad/data/photos/{id}      foto's bij notities, enkel in 1.21.0; wordt leeggemaakt (dropOldPhotos)
 // Wie erin mag, staat in de Firestore-regels (enkel Svens e-mailadres).
 import { localStore } from './storage.js';
-import { store, normalize, normProject, normNote, prefs, setSyncer, OTHER, MAX_MOVEMENTS, TRASH_DAYS } from './store.js';
+import { store, normalize, normProject, normNote, normDevice, prefs, setSyncer, OTHER, MAX_MOVEMENTS, TRASH_DAYS } from './store.js';
 
 const DAY = 24 * 3600 * 1000;
 const KEEP = TRASH_DAYS * DAY;
@@ -71,7 +72,7 @@ async function sdk() {
   const meta = F.doc(db, 'voorraad', 'data');
   fb = {
     A, F, auth, db, meta, items: F.collection(meta, 'items'), movements: F.collection(meta, 'movements'),
-    projects: F.collection(meta, 'projects'), notes: F.collection(meta, 'notes'), photos: F.collection(meta, 'photos'),
+    projects: F.collection(meta, 'projects'), notes: F.collection(meta, 'notes'), devices: F.collection(meta, 'devices'), photos: F.collection(meta, 'photos'),
   };
   return fb;
 }
@@ -103,12 +104,13 @@ function movesById(list) {
 // De vorige toestand is de volgende keer weer de "oude": onthouden, zodat ze niet opnieuw uitgerekend wordt.
 const docsCache = new WeakMap();
 function docsOf(d) {
-  if (!d) return { meta: null, items: new Map(), movements: new Map(), projects: new Map(), notes: new Map() };
+  if (!d) return { meta: null, items: new Map(), movements: new Map(), projects: new Map(), notes: new Map(), devices: new Map() };
   let docs = docsCache.get(d);
   if (!docs) {
     docs = {
       meta: metaOf(d), items: new Map([...d.items, ...d.trash].map((i) => [docId(i.id), i])), movements: movesById(d.movements),
       projects: new Map(d.projects.map((x) => [docId(x.id), x])), notes: new Map(d.notes.map((x) => [docId(x.id), x])),
+      devices: new Map(d.devices.map((x) => [docId(x.id), x])),
     };
     docsCache.set(d, docs);
   }
@@ -164,16 +166,16 @@ function push(prev, next) {
 }
 
 function send(prev, next) {
-  const { F, db, meta, items, movements, projects, notes } = fb;
+  const { F, db, meta, items, movements, projects, notes, devices } = fb;
   const a = docsOf(prev);
   const b = docsOf(next);
   const ops = [];
   if (!same(a.meta, b.meta)) ops.push((batch) => batch.set(meta, b.meta));
-  // Projecten en notities in aparte batches: een fout daar mag het bewaren van de voorraad niet tegenhouden.
+  // Projecten, notities en afmetingen in aparte batches: een fout daar mag het bewaren van de voorraad niet tegenhouden.
   const later = [];
   for (const [coll, x, y] of [[items, a.items, b.items], [movements, a.movements, b.movements],
-    [projects, a.projects, b.projects], [notes, a.notes, b.notes]]) {
-    const list = coll === projects || coll === notes ? later : ops;
+    [projects, a.projects, b.projects], [notes, a.notes, b.notes], [devices, a.devices, b.devices]]) {
+    const list = coll === projects || coll === notes || coll === devices ? later : ops;
     // Logboekregels krijgen de servertijd mee, zodat een ander toestel enkel de nieuwe hoeft op te halen.
     // Elke regel krijgt de servertijd (at) mee; artikels ook een deletedAt (leeg als ze niet verwijderd zijn),
     // zodat terugzetten het veld ook online wist.
@@ -218,7 +220,7 @@ function send(prev, next) {
 
 let unsubscribe = [];
 let waitingSince = null; // gegevens van vóór de eerste wijziging die nog niet verstuurd kon worden
-const pending = { meta: false, items: false, movements: false, projects: false, notes: false };
+const pending = { meta: false, items: false, movements: false, projects: false, notes: false, devices: false };
 
 /** Ids die online een merkteken "definitief gewist" kregen en hier nog staan. */
 function purgedIn(changes, coll, byId) {
@@ -237,7 +239,7 @@ function listen() {
   const { F, meta, items, movements } = fb;
   const opts = { includeMetadataChanges: true };
   // Eén keer na deze versie alles volledig inlezen: wat vroeger elders definitief gewist werd, verdwijnt dan ook hier.
-  if ((prefs.value.syncV || 0) < 2) prefs.set({ itemsFullAt: 0, projectsFullAt: 0, notesFullAt: 0, syncV: 2 });
+  if ((prefs.value.syncV || 0) < 2) prefs.set({ itemsFullAt: 0, projectsFullAt: 0, notesFullAt: 0, devicesFullAt: 0, syncV: 2 });
   // Lezen kost per document. Daarom haalt de app artikels en logboek normaal enkel op wat sinds de vorige keer
   // wijzigde (op servertijd). Eén keer per dag, of als er nog geen startpunt is, leest ze alles volledig in: dan
   // merkt ze ook wat elders definitief verdween, en krijgen oudere documenten hun servertijd.
@@ -409,6 +411,7 @@ function listen() {
     F.onSnapshot(F.query(movements, F.where('at', '>', since(seen))), opts, onColl('movements'), fail),
     listenSimple('projects', normProject, 'projectsAt', 'projectsFullAt'),
     listenSimple('notes', normNote, 'notesAt', 'notesFullAt'),
+    listenSimple('devices', normDevice, 'devicesAt', 'devicesFullAt'),
   ];
   setSyncer(push);
   setStatus({ state: 'on', error: '' });
@@ -461,8 +464,8 @@ function merge(remote, local) {
   r.brands.push(...local.brands.filter((b) => !brands.has(b.toLowerCase())));
   const picks = new Set(r.pickList.map((p) => p.itemId));
   r.pickList.push(...local.pickList.filter((p) => !picks.has(p.itemId)));
-  // Projecten en notities: per stuk wint de recentste wijziging (verwijderen telt ook als wijziging).
-  for (const key of ['projects', 'notes']) {
+  // Projecten, notities en afmetingen: per stuk wint de recentste wijziging (verwijderen telt ook als wijziging).
+  for (const key of ['projects', 'notes', 'devices']) {
     const byId = new Map(r[key].map((x) => [x.id, x]));
     for (const x of local[key]) if (!byId.has(x.id) || x.updatedAt > byId.get(x.id).updatedAt) byId.set(x.id, x);
     r[key] = [...byId.values()];
@@ -472,25 +475,25 @@ function merge(remote, local) {
 
 /** Geeft de laatste servertijden van logboek en artikels terug (0 = nog niets), als startpunt voor later. */
 async function firstSync() {
-  const { F, meta, items, movements, projects, notes } = fb;
+  const { F, meta, items, movements, projects, notes, devices } = fb;
   const m = await F.getDocFromServer(meta);
   if (!m.exists()) {
     push(null, store.data); // nog niets online: alles van dit toestel opladen
-    return { syncAt: 0, itemsAt: 0, projectsAt: 0, notesAt: 0 };
+    return { syncAt: 0, itemsAt: 0, projectsAt: 0, notesAt: 0, devicesAt: 0 };
   }
-  const [its, mvs, prj, nts] = await Promise.all([F.getDocsFromServer(items), F.getDocsFromServer(movements),
-    F.getDocsFromServer(projects), F.getDocsFromServer(notes)]);
+  const [its, mvs, prj, nts, dvs] = await Promise.all([F.getDocsFromServer(items), F.getDocsFromServer(movements),
+    F.getDocsFromServer(projects), F.getDocsFromServer(notes), F.getDocsFromServer(devices)]);
   // Definitief gewist op een ander toestel: niet meer tonen, en ook hier weghalen, tenzij het hier later nog gewijzigd werd.
   const purged = new Map();
   const keep = (docs) => docs.map((s) => s.data()).filter((v) => { if (v.purged) purged.set(v.id, v.purged); return !v.purged; });
   const remote = normalize({
     ...m.data(), items: keep(its.docs), movements: sortMoves(mvs.docs.map((s) => s.data())),
-    projects: keep(prj.docs), notes: keep(nts.docs),
+    projects: keep(prj.docs), notes: keep(nts.docs), devices: keep(dvs.docs),
   });
   const alive = (x) => !purged.has(x.id) || (x.deletedAt || x.updatedAt || 0) > purged.get(x.id);
   const local = store.data;
   const merged = merge(remote, { ...local, items: local.items.filter(alive), trash: local.trash.filter(alive),
-    projects: local.projects.filter(alive), notes: local.notes.filter(alive) });
+    projects: local.projects.filter(alive), notes: local.notes.filter(alive), devices: local.devices.filter(alive) });
   store.applyRemote(() => merged);
   push(remote, merged);
   const last = (docs) => Math.max(0, ...docs.map((s) => s.data().at?.toMillis?.() ?? 0));
@@ -498,6 +501,7 @@ async function firstSync() {
   return {
     syncAt: last(mvs.docs), itemsAt: last(its.docs),
     projectsAt: last(prj.docs), projectsFullAt: now, notesAt: last(nts.docs), notesFullAt: now,
+    devicesAt: last(dvs.docs), devicesFullAt: now,
   };
 }
 
@@ -585,7 +589,7 @@ export const cloud = {
   async signOut() {
     stop();
     waitingSince = null;
-    prefs.set({ cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, cloudDirty: false });
+    prefs.set({ cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, cloudDirty: false });
     setStatus({ state: 'off', pending: false, error: '' });
     try { await fb?.A.signOut(fb.auth); } catch { /* niet erg */ }
   },

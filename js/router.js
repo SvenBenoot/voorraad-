@@ -15,7 +15,7 @@ export const scrollFor = (path) => (wentBack ? scrolls.get(path) ?? 0 : 0);
 
 window.addEventListener('popstate', () => { wentBack = true; for (const fn of listeners) fn(current()); });
 
-// base = het eerste scherm in de geschiedenis is het keuzescherm (Inventaris of Projecten). Dat blijft dan
+// base = het eerste scherm in de geschiedenis is het keuzescherm (Inventaris, Projecten of Afmetingen). Dat blijft dan
 // onder alles liggen: Terug vanaf het begin van een onderdeel brengt je daar.
 const stateFor = (depth) => ({ depth, ...(history.state?.base ? { base: true } : {}) });
 
@@ -35,7 +35,7 @@ export function go(path, { replace = false } = {}) {
 export function startAtChooser(target = '/start') {
   if (location.hash && location.hash !== '#') return;
   history.replaceState({ depth: 0, base: true }, '', '#/start');
-  if (target === '/' || target === '/projecten') history.pushState({ depth: 1, base: true }, '', '#' + target);
+  if (target === '/' || target === '/projecten' || target === '/afmetingen') history.pushState({ depth: 1, base: true }, '', '#' + target);
 }
 
 /** Terug naar het vorige scherm; is er geen (bv. app net geopend op een artikel), dan naar [fallback]. */
@@ -46,7 +46,7 @@ export function back(fallback = '/') {
 }
 
 /**
- * Terug naar het begin van een onderdeel ([target]: '/' = inventaris, '/projecten'), en de schermen ertussen uit de
+ * Terug naar het begin van een onderdeel ([target]: '/' = inventaris, '/projecten', '/afmetingen'), en de schermen ertussen uit de
  * geschiedenis (Terug gaat dan niet terug naar het artikel). Het keuzescherm blijft eronder liggen.
  */
 export function home(target = '/') {

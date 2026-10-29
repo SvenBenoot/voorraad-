@@ -130,6 +130,8 @@ export function normalize(raw) {
     // Projecten en hun notities (sinds 1.20). Verwijderde houden een deletedAt (30 dagen), zodat andere toestellen dat ook zien.
     projects: (raw?.projects ?? []).filter((x) => x?.id != null).map(normProject),
     notes: (raw?.notes ?? []).filter((x) => x?.id != null && x.projectId != null).map(normNote),
+    // Afmetingen van tv's en video soundbars (sinds 1.24), ook met deletedAt.
+    devices: (raw?.devices ?? []).filter((x) => x?.id != null).map(normDevice),
   };
   // De categorieën die er in 1.7 bijkwamen één keer toevoegen (vóór "Andere"), tenzij er al een met die naam is.
   if (raw?.categories?.length && !raw.extraCategories) {
@@ -180,6 +182,31 @@ export function normNote(n) {
     ...(n.deletedAt ? { deletedAt: +n.deletedAt } : {}),
   };
 }
+
+// ---- afmetingen (tv's en video soundbars)
+
+/** Soorten toestellen bij Afmetingen. */
+export const DEVICE_KINDS = [{ key: 'tv', label: 'Tv' }, { key: 'bar', label: 'Video soundbar' }];
+// Maten in hele mm (zo bewaard, ook als je in cm werkt), gewicht in kg.
+const mm = (v) => (Number.isFinite(+v) && +v > 0 ? Math.round(+v) : 0);
+
+export function normDevice(x) {
+  const now = Date.now();
+  const createdAt = time(x.createdAt, now);
+  const tv = x.kind !== 'bar';
+  return {
+    id: String(x.id), kind: tv ? 'tv' : 'bar', brand: String(x.brand ?? ''), model: String(x.model ?? ''),
+    width: mm(x.width), height: mm(x.height), depth: mm(x.depth),
+    weight: Number.isFinite(+x.weight) && +x.weight > 0 ? Math.round(+x.weight * 10) / 10 : 0,
+    vesaW: tv ? mm(x.vesaW) : 0, vesaH: tv ? mm(x.vesaH) : 0, note: String(x.note ?? ''),
+    createdAt, updatedAt: time(x.updatedAt, createdAt),
+    ...(x.deletedAt ? { deletedAt: +x.deletedAt } : {}),
+  };
+}
+
+export const liveDevices = (d) => d.devices.filter((x) => !x.deletedAt);
+/** "Samsung QE55Q80D", of enkel het merk of type als het andere leeg is. */
+export const deviceName = (x) => [x.brand, x.model].filter((t) => t.trim()).join(' ') || 'Zonder naam';
 
 /** Plaats van een nieuwe notitie: een taak onderaan de lijst, een notitie bovenaan. */
 export const noteOrder = (task, t = Date.now()) => (task ? t : -t);
@@ -348,10 +375,13 @@ export const store = {
       const gone = new Set(d.projects.filter((p) => p.deletedAt && p.deletedAt <= limit).map((p) => p.id));
       const projects = d.projects.filter((p) => !gone.has(p.id));
       const notes = d.notes.filter((n) => !gone.has(n.projectId) && !(n.deletedAt && n.deletedAt <= limit));
-      if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length) return null;
+      const devices = d.devices.filter((x) => !(x.deletedAt && x.deletedAt <= limit));
+      if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length
+        && devices.length === d.devices.length) return null;
       d.trash = keep;
       d.projects = projects;
       d.notes = notes;
+      d.devices = devices;
       return d;
     });
   },
@@ -462,6 +492,56 @@ export const store = {
     });
   },
 
+  // ---- afmetingen
+
+  device(id) { return data.devices.find((x) => x.id === id && !x.deletedAt); },
+
+  async addDevice(fields) {
+    const now = Date.now();
+    const x = normDevice({ ...fields, id: newId(), createdAt: now, updatedAt: now });
+    await this.update((d) => { d.devices = [...d.devices, x]; return d; });
+    return x;
+  },
+
+  editDevice(id, patch) {
+    return this.update((d) => {
+      const old = d.devices.find((x) => x.id === id);
+      if (!old) return null;
+      const next = normDevice({ ...old, ...patch, updatedAt: Date.now() });
+      if (same(old, next, ['updatedAt'])) return null;
+      d.devices = d.devices.map((x) => (x.id === id ? next : x));
+      return d;
+    });
+  },
+
+  /** Naar de prullenmand (30 dagen), zoals projecten. */
+  deleteDevice(id) {
+    const now = Date.now();
+    return this.update((d) => {
+      if (!d.devices.some((x) => x.id === id && !x.deletedAt)) return null;
+      d.devices = d.devices.map((x) => (x.id === id ? { ...x, deletedAt: now, updatedAt: now } : x));
+      return d;
+    });
+  },
+
+  restoreDevice(id) {
+    return this.update((d) => {
+      if (!d.devices.some((x) => x.id === id && x.deletedAt)) return null;
+      d.devices = d.devices.map((x) => { if (x.id !== id) return x; const { deletedAt, ...rest } = x; return { ...rest, updatedAt: Date.now() }; }); // eslint-disable-line no-unused-vars
+      return d;
+    });
+  },
+
+  /** Definitief weg ([ids] weglaten = alle verwijderde toestellen). */
+  deleteDevicesForever(ids) {
+    return this.update((d) => {
+      const keep = d.devices.filter((x) => !x.deletedAt || (ids && !ids.includes(x.id)));
+      if (keep.length === d.devices.length) return null;
+      d.devices = keep;
+      return d;
+    });
+  },
+
   // ---- eigen productlijst (ingelezen uit een CRM-export; los van de gegevens, niet in de reservekopie)
 
   getCatalog() { return backend.loadCatalog(); },
@@ -568,7 +648,10 @@ export const store = {
   async replaceAll(raw) {
     const prev = data;
     // Een reservekopie van vóór 1.20 heeft geen projecten: dan blijven de huidige staan.
-    data = normalize(raw && !('projects' in raw) ? { ...raw, projects: data.projects, notes: data.notes } : raw);
+    // Zo ook voor de afmetingen (sinds 1.24).
+    const keep = { ...(raw && !('projects' in raw) ? { projects: data.projects, notes: data.notes } : {}),
+      ...(raw && !('devices' in raw) ? { devices: data.devices } : {}) };
+    data = normalize(raw ? { ...raw, ...keep } : raw);
     emit();
     sync(prev, data);
     await backend.saveData(data);
@@ -623,7 +706,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT' };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT', unit: 'mm' };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

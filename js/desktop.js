@@ -8,6 +8,7 @@ import { useData, usePrefs } from './ui.js';
 import { SyncButton, SyncDialog } from './cloud-card.js';
 import { go, home, toStart } from './router.js';
 import { projectStats, sortProjects, ProjectDialog } from './projects-ui.js';
+import { DeviceDialog } from './screens/devices.js';
 
 export { useDesktop } from './ui.js';
 
@@ -20,13 +21,16 @@ const NAV = [
   { path: '/aanvullen', icon: 'i_checklist', label: 'Aanvullen', match: ['aanvullen'], badge: true },
   { path: '/verbruik', icon: 'i_history', label: 'Verbruik', match: ['verbruik'] },
   { path: '/prullenmand', icon: 'i_delete', label: 'Prullenmand', match: ['prullenmand'] },
-  { path: '/instellingen', icon: 'i_settings', label: 'Instellingen', match: ['instellingen', 'verwijderde-projecten'] },
+  { path: '/instellingen', icon: 'i_settings', label: 'Instellingen', match: ['instellingen', 'verwijderde-projecten', 'verwijderde-afmetingen'] },
 ];
 
 // Projecten: overzicht, dan de actieve projecten zelf (vastgezette eerst), zodat je snel wisselt.
 const PROJECT_PATHS = ['projecten', 'project'];
-// Instellingen hoort bij beide: dan blijft de zijbalk van het onderdeel waar je vandaan kwam.
+const SIZE_PATHS = ['afmetingen', 'afmeting', 'combineren'];
+// Instellingen hoort bij alle onderdelen: dan blijft de zijbalk van het onderdeel waar je vandaan kwam.
+const SHARED = ['instellingen', 'verwijderde-projecten', 'verwijderde-afmetingen'];
 let lastModule = 'inventory';
+const MODULES = [['inventory', 'Inventaris', '/'], ['projects', 'Projecten', '/projecten'], ['sizes', 'Afmetingen', '/afmetingen']];
 
 function ProjectNav({ section, id }) {
   const data = useData();
@@ -52,8 +56,26 @@ function ProjectNav({ section, id }) {
     })}
     ${active.length > 12 && html`<a href="#/projecten" class="side-item side-more" onClick=${(e) => { e.preventDefault(); home('/projecten'); }}>
       <span></span><span>Alle projecten</span></a>`}
-    ${item('/instellingen', html`<${Icon} name="i_settings" size=${22} />`, 'Instellingen', section === 'instellingen' || section === 'verwijderde-projecten')}
+    ${item('/instellingen', html`<${Icon} name="i_settings" size=${22} />`, 'Instellingen', SHARED.includes(section))}
     ${creating && html`<${ProjectDialog} onDismiss=${() => setCreating(false)} onCreated=${(x) => go('/project/' + x.id)} />`}`;
+}
+
+// Afmetingen: overzicht, combineren en een nieuw toestel.
+function SizeNav({ section }) {
+  const [creating, setCreating] = useState(false);
+  const item = (to, icon, label, on) => html`<a key=${to} href=${'#' + to} class=${'side-item' + (on ? ' on' : '')}
+    aria-current=${on ? 'page' : null}
+    onClick=${(e) => { e.preventDefault(); if (on) return; if (to === '/afmetingen') home('/afmetingen'); else go(to); }}>
+    <${Icon} name=${icon} size=${22} /><span class="ellipsis">${label}</span>
+  </a>`;
+  return html`
+    ${item('/afmetingen', 'square_foot', 'Overzicht', section === 'afmetingen' || section === 'afmeting')}
+    ${item('/combineren', 'combo', 'Combineren', section === 'combineren')}
+    <button type="button" class="side-item side-btn" onClick=${() => setCreating(true)}>
+      <${Icon} name="i_add" size=${22} /><span>Nieuw toestel</span>
+    </button>
+    ${item('/instellingen', 'i_settings', 'Instellingen', SHARED.includes(section))}
+    ${creating && html`<${DeviceDialog} onDismiss=${() => setCreating(false)} onSaved=${(x) => go('/afmeting/' + x.id)} />`}`;
 }
 
 function Sidebar({ path }) {
@@ -62,21 +84,22 @@ function Sidebar({ path }) {
   const [syncInfo, setSyncInfo] = useState(false);
   const [, section = '', id] = path.split('/');
   if (PROJECT_PATHS.includes(section)) lastModule = 'projects';
-  else if (section !== 'instellingen' && section !== 'verwijderde-projecten') lastModule = 'inventory';
+  else if (SIZE_PATHS.includes(section)) lastModule = 'sizes';
+  else if (!SHARED.includes(section)) lastModule = 'inventory';
   const projects = lastModule === 'projects';
   const restock = data.items.filter(needsRestock).length;
-  const switchTo = (to) => { if (to === 'projects' ? !projects : projects) home(to === 'projects' ? '/projecten' : '/'); };
+  const switchTo = (to) => { const m = MODULES.find((x) => x[0] === to); if (to !== lastModule) home(m[2]); };
   return html`<nav class="side" aria-label="Menu">
     <a href="#/start" class="side-brand" title="Start" onClick=${(e) => { e.preventDefault(); toStart(); }}>
       <img src="img/logo-doos.svg" alt="" width="32" height="32" />
-      <span>${projects ? 'Projecten' : 'Inventaris'}</span>
+      <span>${MODULES.find((x) => x[0] === lastModule)[1]}</span>
     </a>
     <div class="seg side-switch" role="group" aria-label="Onderdeel">
-      <button type="button" class=${!projects ? 'on' : ''} aria-pressed=${!projects} onClick=${() => switchTo('inventory')}>Inventaris</button>
-      <button type="button" class=${projects ? 'on' : ''} aria-pressed=${projects} onClick=${() => switchTo('projects')}>Projecten</button>
+      ${MODULES.map(([k, l]) => html`<button type="button" key=${k} class=${lastModule === k ? 'on' : ''} aria-pressed=${lastModule === k}
+        onClick=${() => switchTo(k)}>${l}</button>`)}
     </div>
     <div class="side-nav">
-      ${projects ? html`<${ProjectNav} section=${section} id=${id} />` : NAV.map((n) => {
+      ${projects ? html`<${ProjectNav} section=${section} id=${id} />` : lastModule === 'sizes' ? html`<${SizeNav} section=${section} />` : NAV.map((n) => {
         const on = n.match.includes(section);
         return html`<a key=${n.path} href=${'#' + n.path} class=${'side-item' + (on ? ' on' : '')} aria-current=${on ? 'page' : null}
           onClick=${(e) => { e.preventDefault(); if (section === n.path.slice(1)) return; if (n.path === '/') home(); else go(n.path); }}>
