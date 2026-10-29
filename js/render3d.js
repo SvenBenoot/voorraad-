@@ -240,67 +240,140 @@ export function Render3D({ blocks, dims = [], notes = [], guides = [], marks = [
 
 // ---- als afbeelding delen
 
-// In een losse afbeelding gelden de stijlen van de app niet: de kleuren (altijd het lichte thema) gaan er rechtstreeks in.
-const LIGHT_STYLE = {
+// In een losse afbeelding gelden de stijlen van de app niet: de kleuren (licht thema) gaan er rechtstreeks in.
+const PAPER = {
   'r3-edge': { stroke: '#66737c' },
-  'r3-ext': { stroke: '#5e6c77', fill: 'none', opacity: '.7' },
+  'r3-ext': { stroke: '#8a979f', fill: 'none' },
   'r3-dim': { stroke: '#207088', fill: 'none', 'stroke-linecap': 'round' },
   half: { stroke: '#1d7c53' },
+  halfText: { fill: '#1d7c53' },
   'r3-vesa-line': { stroke: '#30cf8a' },
   'r3-vesa-hole': { stroke: '#30cf8a' },
-  'r3-chip': { fill: '#ffffff', stroke: '#e4eaed' },
+  'r3-chip': { fill: '#ffffff', stroke: '#dfe6ea' },
   'r3-text': { fill: '#191d1f', 'font-weight': '600' },
   note: { fill: '#207088' },
 };
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
-/**
- * De tekening op het scherm als PNG, met [title] erboven en de maten ([rows] = [label, waarde]) eronder.
- * Wit, zodat ze ook afgedrukt of in een e-mail goed leesbaar is.
- */
-export async function drawingPng(svg, title, rows, name) {
-  const W = 1400, pad = 64;
+const loadImage = async (src) => { const img = new Image(); img.src = src; await img.decode(); return img; };
+
+/** De tekening als afbeelding van [w] breed, met de kleuren van [theme]. Geeft { img, h }. */
+async function svgImage(svg, w, theme) {
   const clone = svg.cloneNode(true);
   for (const el of clone.querySelectorAll('[class]')) {
-    const cls = el.getAttribute('class').split(/\s+/);
-    for (const c of cls) {
-      const st = LIGHT_STYLE[c];
-      if (!st) continue;
-      // "half" kleurt een tekst groen met fill, een lijn met stroke.
-      for (const [k, v] of Object.entries(c === 'half' && el.tagName === 'text' ? { fill: '#1d7c53' } : st)) el.setAttribute(k, v);
+    for (const c of el.getAttribute('class').split(/\s+/)) {
+      // "half" kleurt een tekst met fill, een lijn met stroke.
+      const st = c === 'half' && el.tagName === 'text' ? theme.halfText : theme[c];
+      if (st) for (const [k, v] of Object.entries(st)) el.setAttribute(k, v);
     }
     el.removeAttribute('class');
   }
   const [, , vw, vh] = clone.getAttribute('viewBox').split(/\s+/).map(Number);
-  const dw = W - 2 * pad, dh = Math.round((dw * vh) / vw);
+  const h = Math.round((w * vh) / vw);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.setAttribute('width', dw);
-  clone.setAttribute('height', dh);
+  clone.setAttribute('width', w);
+  clone.setAttribute('height', h);
   clone.setAttribute('font-family', FONT);
-  const img = new Image();
-  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
-  await img.decode();
+  return { img: await loadImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone))), h };
+}
 
-  const rowH = 56, top = 150;
-  const H = top + dh + 48 + rows.length * rowH + pad;
+function rr(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+function grid(g, x, y, w, h, step, color) {
+  g.save(); rr(g, x, y, w, h, 18); g.clip();
+  g.strokeStyle = color; g.lineWidth = 1;
+  for (let i = x + step; i < x + w; i += step) { g.beginPath(); g.moveTo(i, y); g.lineTo(i, y + h); g.stroke(); }
+  for (let j = y + step; j < y + h; j += step) { g.beginPath(); g.moveTo(x, j); g.lineTo(x + w, j); g.stroke(); }
+  g.restore();
+}
+const brandGrad = (g, x0, x1) => { const b = g.createLinearGradient(x0, 0, x1, 0); b.addColorStop(0, '#30a9ce'); b.addColorStop(1, '#30cf8a'); return b; };
+/** Tekst inkorten met … als hij niet past. */
+function fit(g, text, max) {
+  if (g.measureText(text).width <= max) return text;
+  let t = text;
+  while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1);
+  return t + '…';
+}
+
+/** Maten als tegels in twee kolommen; een lange waarde krijgt de volle breedte. [accent] = eerste tegel uitgelicht. */
+function tiles(g, rows, x, y, w, { accent } = {}) {
+  const gap = 16, colW = (w - gap) / 2, th = 104;
+  let col = 0;
+  g.font = `600 34px ${FONT}`;
+  // Korte maten eerst (twee per rij), lange (volle breedte) achteraan: zo blijven er geen gaten.
+  const long = (r) => g.measureText(r[1]).width > colW - 56;
+  rows = [...rows.filter((r, i) => (accent && i === 0) || !long(r)), ...rows.filter((r, i) => !(accent && i === 0) && long(r))];
+  rows.forEach(([label, value], i) => {
+    const full = g.measureText(value).width > colW - 56;
+    if (full && col === 1) { col = 0; y += th + gap; }
+    const tx = x + col * (colW + gap), tw = full ? w : colW;
+    const hi = accent && i === 0;
+    rr(g, tx, y, tw, th, 16);
+    g.fillStyle = hi ? '#eaf6fa' : '#f6f9fb'; g.fill();
+    g.strokeStyle = hi ? '#207088' : '#e2e9ed'; g.lineWidth = hi ? 2.5 : 2; g.stroke();
+    g.textAlign = 'left';
+    g.fillStyle = hi ? '#207088' : '#5e6c77'; g.font = `600 22px ${FONT}`;
+    g.fillText(label.toUpperCase(), tx + 26, y + 40);
+    g.fillStyle = hi ? '#207088' : '#191d1f'; g.font = `${hi ? 700 : 600} 34px ${FONT}`;
+    g.fillText(fit(g, value, tw - 52), tx + 26, y + 84);
+    if (full || col === 1) { col = 0; y += th + gap; } else col = 1;
+  });
+  return col ? y + th + gap : y;
+}
+const tilesHeight = (rows, w) => { const c = document.createElement('canvas').getContext('2d'); return tiles(c, rows, 0, 0, w); };
+
+const today = () => new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/**
+ * De tekening op het scherm als PNG, als technische fiche: donkere kop met logo, naam en [sub], de tekening op een
+ * licht raster en de maten ([rows] = [label, waarde]) als tegels. [accent] = eerste maat uitgelicht.
+ * Licht, zodat ze ook afgedrukt goed leesbaar is; dubbele resolutie, zodat ze scherp blijft.
+ */
+export async function drawingPng(svg, title, rows, name, { sub = '', accent = false } = {}) {
+  const W = 1400, pad = 64, S = 2;
+  const logo = await loadImage('img/logo-doos.svg').catch(() => null);
+  const drawW = W - 2 * pad - 80;
+  const { img, h: dh } = await svgImage(svg, drawW, PAPER);
+  const head = 190, cardH = dh + 80;
+  const H = head + 40 + cardH + 56 + tilesHeight(rows, W - 2 * pad) + 110;
+
   const canvas = document.createElement('canvas');
-  canvas.width = W; canvas.height = H;
+  canvas.width = W * S; canvas.height = H * S;
   const g = canvas.getContext('2d');
+  g.scale(S, S);
+  g.textBaseline = 'alphabetic';
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
-  const brand = g.createLinearGradient(0, 0, W, 0);
-  brand.addColorStop(0, '#30a9ce'); brand.addColorStop(1, '#30cf8a');
-  g.fillStyle = brand; g.fillRect(0, 0, W, 10);
-  g.fillStyle = '#191d1f'; g.font = `700 48px ${FONT}`; g.textBaseline = 'alphabetic';
-  g.fillText(title, pad, 100);
-  g.drawImage(img, pad, top, dw, dh);
-  let y = top + dh + 48;
-  g.font = `400 32px ${FONT}`;
-  for (const [label, value] of rows) {
-    g.fillStyle = '#e4eaed'; g.fillRect(pad, y, W - 2 * pad, 2);
-    g.fillStyle = '#455663'; g.textAlign = 'left'; g.font = `400 32px ${FONT}`; g.fillText(label, pad, y + 40);
-    g.fillStyle = '#191d1f'; g.textAlign = 'right'; g.font = `600 32px ${FONT}`; g.fillText(value, W - pad, y + 40);
-    y += rowH;
-  }
+
+  // kop
+  g.fillStyle = '#14272f'; g.fillRect(0, 0, W, head);
+  g.fillStyle = brandGrad(g, 0, W); g.fillRect(0, head, W, 8);
+  if (logo) g.drawImage(logo, pad, 52, 78, 85);
+  g.fillStyle = '#ffffff'; g.font = `700 50px ${FONT}`; g.textAlign = 'left';
+  g.fillText(fit(g, title, W - 2 * pad - 110), pad + 110, 100);
+  g.fillStyle = '#b3c0c8'; g.font = `400 28px ${FONT}`; g.fillText(sub, pad + 110, 144);
+
+  // tekenvlak
+  const cy = head + 40;
+  rr(g, pad, cy, W - 2 * pad, cardH, 18);
+  g.fillStyle = '#f6f9fb'; g.fill();
+  grid(g, pad, cy, W - 2 * pad, cardH, 28, 'rgba(32,112,136,.07)');
+  rr(g, pad, cy, W - 2 * pad, cardH, 18);
+  g.strokeStyle = '#e2e9ed'; g.lineWidth = 2; g.stroke();
+  g.drawImage(img, pad + 40, cy + 40, drawW, dh);
+
+  // maten
+  tiles(g, rows, pad, cy + cardH + 56, W - 2 * pad, { accent });
+
+  // voet
+  const fy = H - 52;
+  g.fillStyle = '#e4eaed'; g.fillRect(pad, fy - 40, W - 2 * pad, 2);
+  g.textAlign = 'left'; g.fillStyle = '#8a979f'; g.font = `400 22px ${FONT}`;
+  g.fillText(`Maten op schaal · ${today()}`, pad, fy);
+  g.textAlign = 'right'; g.fillStyle = '#207088'; g.font = `600 22px ${FONT}`; g.fillText('Voorraad · Afmetingen', W - pad, fy);
+
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
   return new File([blob], (name.replace(/[^\w\- ]+/g, '').trim() || 'afmetingen') + '.png', { type: 'image/png' });
 }

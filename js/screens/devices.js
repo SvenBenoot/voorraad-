@@ -133,8 +133,8 @@ function ViewSwitch({ value, onPick }) {
 const Row = ({ label, children }) => html`<div class="dev-row"><span>${label}</span><b>${children}</b></div>`;
 
 /** Venster om de tekening met de maten als afbeelding door te sturen. */
-function ShareImage({ title, rows, name, onDismiss }) {
-  return html`<${ShareDialog} make=${() => drawingPng(document.querySelector('.r3'), title, rows, name)} icon="i_share"
+function ShareImage({ title, sub, rows, name, accent, onDismiss }) {
+  return html`<${ShareDialog} make=${() => drawingPng(document.querySelector('.r3'), title, rows, name, { sub, accent })} icon="i_share"
     title="Afbeelding klaar" text="Stuur ze door of bewaar ze." button="Delen…" onDismiss=${onDismiss}
     onShared=${(res) => { if (res === 'downloaded') toast('Afbeelding gedownload'); }} />`;
 }
@@ -188,7 +188,8 @@ export function DeviceScreen({ id }) {
     ${editing && html`<${DeviceDialog} key=${editing} device=${editing === 'edit' ? t : null} copyOf=${editing === 'copy' ? t : null}
       onDismiss=${() => setEditing(null)} onSaved=${(x) => { if (editing === 'copy') go('/afmeting/' + x.id, { replace: true }); }}
       onDeleted=${() => home('/afmetingen')} />`}
-    ${sharing && html`<${ShareImage} title=${deviceName(t) + (view === 'back' ? ' · achterkant' : '')} rows=${rows} name=${deviceName(t)}
+    ${sharing && html`<${ShareImage} title=${deviceName(t)} rows=${rows.filter(([l]) => l !== 'Soort')} name=${deviceName(t)}
+      sub=${`${kindLabel(t.kind)} · ${view === 'back' ? 'achteraanzicht' : 'vooraanzicht'} · ${fmtDims(t)}`}
       onDismiss=${() => setSharing(false)} />`}
   </div>`;
 }
@@ -293,7 +294,8 @@ export function ComboScreen() {
     </main>
     ${picking && html`<${DevicePicker} kind=${picking} devices=${liveDevices(data).filter((x) => x.kind === picking).sort(byName)}
       onPick=${(x) => { setPicking(null); set({ [picking]: x.id }); }} onDismiss=${() => setPicking(null)} />`}
-    ${sharing && scene && html`<${ShareImage} title=${deviceName(tv) + ' + ' + deviceName(bar)} rows=${rows}
+    ${sharing && scene && html`<${ShareImage} title=${deviceName(tv) + ' + ' + deviceName(bar)} rows=${rows} accent
+      sub=${`Tv met video soundbar ${combo.above ? 'erboven' : 'eronder'}`}
       name=${deviceName(tv) + ' + ' + deviceName(bar)} onDismiss=${() => setSharing(false)} />`}
   </div>`;
 }
