@@ -240,7 +240,7 @@ export function Render3D({ blocks, dims = [], notes = [], guides = [], marks = [
 
 // ---- als afbeelding delen
 
-// In een losse afbeelding gelden de stijlen van de app niet: de kleuren gaan er rechtstreeks in.
+// In een losse afbeelding gelden de stijlen van de app niet: de kleuren (licht thema) gaan er rechtstreeks in.
 const PAPER = {
   'r3-edge': { stroke: '#66737c' },
   'r3-ext': { stroke: '#8a979f', fill: 'none' },
@@ -252,18 +252,6 @@ const PAPER = {
   'r3-chip': { fill: '#ffffff', stroke: '#dfe6ea' },
   'r3-text': { fill: '#191d1f', 'font-weight': '600' },
   note: { fill: '#207088' },
-};
-// Blauwdruk: witte lijnen op blauw.
-const BLUEPRINT = {
-  ...PAPER,
-  'r3-edge': { stroke: '#9fc3dc' },
-  'r3-ext': { stroke: '#7fa9c9', fill: 'none' },
-  'r3-dim': { stroke: '#ffffff', fill: 'none', 'stroke-linecap': 'round' },
-  half: { stroke: '#6fe3b0' },
-  halfText: { fill: '#6fe3b0' },
-  'r3-chip': { fill: '#12416a', stroke: '#2d6693' },
-  'r3-text': { fill: '#ffffff', 'font-weight': '600' },
-  note: { fill: '#6fe3b0' },
 };
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
@@ -311,46 +299,46 @@ function fit(g, text, max) {
 }
 
 /** Maten als tegels in twee kolommen; een lange waarde krijgt de volle breedte. [accent] = eerste tegel uitgelicht. */
-function tiles(g, rows, x, y, w, { accent, dark } = {}) {
+function tiles(g, rows, x, y, w, { accent } = {}) {
   const gap = 16, colW = (w - gap) / 2, th = 104;
   let col = 0;
   g.font = `600 34px ${FONT}`;
+  // Korte maten eerst (twee per rij), lange (volle breedte) achteraan: zo blijven er geen gaten.
+  const long = (r) => g.measureText(r[1]).width > colW - 56;
+  rows = [...rows.filter((r, i) => (accent && i === 0) || !long(r)), ...rows.filter((r, i) => !(accent && i === 0) && long(r))];
   rows.forEach(([label, value], i) => {
     const full = g.measureText(value).width > colW - 56;
     if (full && col === 1) { col = 0; y += th + gap; }
     const tx = x + col * (colW + gap), tw = full ? w : colW;
     const hi = accent && i === 0;
     rr(g, tx, y, tw, th, 16);
-    g.fillStyle = hi ? '#eaf6fa' : dark ? '#12416a' : '#f6f9fb'; g.fill();
-    g.strokeStyle = hi ? '#207088' : dark ? '#2d6693' : '#e2e9ed'; g.lineWidth = hi ? 2.5 : 2; g.stroke();
+    g.fillStyle = hi ? '#eaf6fa' : '#f6f9fb'; g.fill();
+    g.strokeStyle = hi ? '#207088' : '#e2e9ed'; g.lineWidth = hi ? 2.5 : 2; g.stroke();
     g.textAlign = 'left';
-    g.fillStyle = hi ? '#207088' : dark ? '#9fc3dc' : '#5e6c77'; g.font = `600 22px ${FONT}`;
+    g.fillStyle = hi ? '#207088' : '#5e6c77'; g.font = `600 22px ${FONT}`;
     g.fillText(label.toUpperCase(), tx + 26, y + 40);
-    g.fillStyle = hi ? '#207088' : dark ? '#ffffff' : '#191d1f'; g.font = `${hi ? 700 : 600} 34px ${FONT}`;
+    g.fillStyle = hi ? '#207088' : '#191d1f'; g.font = `${hi ? 700 : 600} 34px ${FONT}`;
     g.fillText(fit(g, value, tw - 52), tx + 26, y + 84);
     if (full || col === 1) { col = 0; y += th + gap; } else col = 1;
   });
   return col ? y + th + gap : y;
 }
-const tilesHeight = (g, rows, w) => { const c = document.createElement('canvas').getContext('2d'); return tiles(c, rows, 0, 0, w); };
+const tilesHeight = (rows, w) => { const c = document.createElement('canvas').getContext('2d'); return tiles(c, rows, 0, 0, w); };
 
 const today = () => new Date().toLocaleDateString('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' });
 
 /**
- * De tekening op het scherm als PNG: kop met naam, de tekening en de maten ([rows] = [label, waarde]) eronder.
- * [sub] = regel onder de naam, [accent] = eerste maat uitgelicht. Licht, zodat ze ook afgedrukt goed leesbaar is.
+ * De tekening op het scherm als PNG, als technische fiche: donkere kop met logo, naam en [sub], de tekening op een
+ * licht raster en de maten ([rows] = [label, waarde]) als tegels. [accent] = eerste maat uitgelicht.
+ * Licht, zodat ze ook afgedrukt goed leesbaar is; dubbele resolutie, zodat ze scherp blijft.
  */
-export async function drawingPng(svg, title, rows, name, { sub = '', accent = false, style = 'A' } = {}) {
+export async function drawingPng(svg, title, rows, name, { sub = '', accent = false } = {}) {
   const W = 1400, pad = 64, S = 2;
   const logo = await loadImage('img/logo-doos.svg').catch(() => null);
-  const blue = style === 'C';
   const drawW = W - 2 * pad - 80;
-  const { img, h: dh } = await svgImage(svg, drawW, blue ? BLUEPRINT : PAPER);
-  const head = style === 'A' ? 190 : 170;
-  const cardH = dh + 80;
-  const specH = tilesHeight(null, rows, W - 2 * pad);
-  const tableH = rows.length * 64;
-  const H = head + 40 + cardH + 56 + (style === 'B' ? tableH : specH) + 110;
+  const { img, h: dh } = await svgImage(svg, drawW, PAPER);
+  const head = 190, cardH = dh + 80;
+  const H = head + 40 + cardH + 56 + tilesHeight(rows, W - 2 * pad) + 110;
 
   const canvas = document.createElement('canvas');
   canvas.width = W * S; canvas.height = H * S;
@@ -360,52 +348,30 @@ export async function drawingPng(svg, title, rows, name, { sub = '', accent = fa
   g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
 
   // kop
-  if (style === 'A') {
-    g.fillStyle = '#14272f'; g.fillRect(0, 0, W, head);
-    g.fillStyle = brandGrad(g, 0, W); g.fillRect(0, head, W, 8);
-    if (logo) g.drawImage(logo, pad, 52, 78, 85);
-    g.fillStyle = '#ffffff'; g.font = `700 50px ${FONT}`; g.textAlign = 'left';
-    g.fillText(fit(g, title, W - 2 * pad - 110), pad + 110, 100);
-    g.fillStyle = '#b3c0c8'; g.font = `400 28px ${FONT}`; g.fillText(sub, pad + 110, 144);
-  } else {
-    g.fillStyle = brandGrad(g, 0, W); g.fillRect(0, 0, W, 10);
-    if (logo) g.drawImage(logo, pad, 58, 64, 70);
-    g.fillStyle = '#191d1f'; g.font = `700 48px ${FONT}`; g.textAlign = 'left';
-    g.fillText(fit(g, title, W - 2 * pad - 420), pad + 92, 98);
-    g.fillStyle = '#5e6c77'; g.font = `400 27px ${FONT}`; g.fillText(sub, pad + 92, 138);
-    g.textAlign = 'right'; g.fillStyle = '#8a979f'; g.font = `400 24px ${FONT}`;
-    g.fillText(today(), W - pad, 98);
-    g.fillStyle = '#e4eaed'; g.fillRect(pad, head - 2, W - 2 * pad, 2);
-  }
+  g.fillStyle = '#14272f'; g.fillRect(0, 0, W, head);
+  g.fillStyle = brandGrad(g, 0, W); g.fillRect(0, head, W, 8);
+  if (logo) g.drawImage(logo, pad, 52, 78, 85);
+  g.fillStyle = '#ffffff'; g.font = `700 50px ${FONT}`; g.textAlign = 'left';
+  g.fillText(fit(g, title, W - 2 * pad - 110), pad + 110, 100);
+  g.fillStyle = '#b3c0c8'; g.font = `400 28px ${FONT}`; g.fillText(sub, pad + 110, 144);
 
   // tekenvlak
   const cy = head + 40;
   rr(g, pad, cy, W - 2 * pad, cardH, 18);
-  g.fillStyle = blue ? '#0f3554' : style === 'A' ? '#f6f9fb' : '#ffffff'; g.fill();
-  if (style !== 'B') grid(g, pad, cy, W - 2 * pad, cardH, 28, blue ? 'rgba(255,255,255,.07)' : 'rgba(32,112,136,.07)');
+  g.fillStyle = '#f6f9fb'; g.fill();
+  grid(g, pad, cy, W - 2 * pad, cardH, 28, 'rgba(32,112,136,.07)');
   rr(g, pad, cy, W - 2 * pad, cardH, 18);
-  g.strokeStyle = blue ? '#0f3554' : '#e2e9ed'; g.lineWidth = 2; g.stroke();
+  g.strokeStyle = '#e2e9ed'; g.lineWidth = 2; g.stroke();
   g.drawImage(img, pad + 40, cy + 40, drawW, dh);
 
   // maten
-  let y = cy + cardH + 56;
-  if (style === 'B') {
-    rows.forEach(([label, value], i) => {
-      if (i % 2 === 0) { g.fillStyle = '#f4f8fa'; rr(g, pad, y, W - 2 * pad, 64, 10); g.fill(); }
-      g.textAlign = 'left'; g.fillStyle = '#5e6c77'; g.font = `400 30px ${FONT}`; g.fillText(label, pad + 24, y + 43);
-      g.textAlign = 'right'; g.fillStyle = accent && i === 0 ? '#207088' : '#191d1f'; g.font = `${accent && i === 0 ? 700 : 600} 30px ${FONT}`;
-      g.fillText(fit(g, value, W - 2 * pad - 360), W - pad - 24, y + 43);
-      y += 64;
-    });
-  } else {
-    y = tiles(g, rows, pad, y, W - 2 * pad, { accent });
-  }
+  tiles(g, rows, pad, cy + cardH + 56, W - 2 * pad, { accent });
 
   // voet
   const fy = H - 52;
   g.fillStyle = '#e4eaed'; g.fillRect(pad, fy - 40, W - 2 * pad, 2);
   g.textAlign = 'left'; g.fillStyle = '#8a979f'; g.font = `400 22px ${FONT}`;
-  g.fillText(style === 'B' ? 'Maten op schaal' : `Maten op schaal · ${today()}`, pad, fy);
+  g.fillText(`Maten op schaal · ${today()}`, pad, fy);
   g.textAlign = 'right'; g.fillStyle = '#207088'; g.font = `600 22px ${FONT}`; g.fillText('Voorraad · Afmetingen', W - pad, fy);
 
   const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));

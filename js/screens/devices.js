@@ -188,7 +188,7 @@ export function DeviceScreen({ id }) {
     ${editing && html`<${DeviceDialog} key=${editing} device=${editing === 'edit' ? t : null} copyOf=${editing === 'copy' ? t : null}
       onDismiss=${() => setEditing(null)} onSaved=${(x) => { if (editing === 'copy') go('/afmeting/' + x.id, { replace: true }); }}
       onDeleted=${() => home('/afmetingen')} />`}
-    ${sharing && html`<${ShareImage} title=${deviceName(t)} rows=${rows} name=${deviceName(t)}
+    ${sharing && html`<${ShareImage} title=${deviceName(t)} rows=${rows.filter(([l]) => l !== 'Soort')} name=${deviceName(t)}
       sub=${`${kindLabel(t.kind)} · ${view === 'back' ? 'achteraanzicht' : 'vooraanzicht'} · ${fmtDims(t)}`}
       onDismiss=${() => setSharing(false)} />`}
   </div>`;
