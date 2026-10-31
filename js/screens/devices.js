@@ -222,8 +222,8 @@ function comboScene(tv, bar, gap, above) {
   return { blocks, dims, center: [0, top / 2, z] };
 }
 
-const toField = (v, unit) => (v ? (unit === 'cm' ? String(v / 10).replace('.', ',') : String(v)) : '');
-const fromField = (s, unit) => { const n = parseFloat(String(s).replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round(unit === 'cm' ? n * 10 : n) : 0; };
+const toField = (v, unit) => (v ? String(unit === 'cm' ? Math.round(v * 10) / 100 : v).replace('.', ',') : '');
+const fromField = (s, unit) => { const n = parseFloat(String(s).replace(',', '.')); return Number.isFinite(n) && n > 0 ? Math.round((unit === 'cm' ? n * 10 : n) * 10) / 10 : 0; };
 
 function PickCard({ kind, device, onClick }) {
   return html`<${Card} onClick=${onClick} cls="item-card dev-pick">
