@@ -1,7 +1,7 @@
 // ---- Offline werken
 // Alle bestanden van de app worden bij de eerste keer bewaard, zodat de app ook zonder internet opent
 // (in de bestelwagen, in een kelder…). Nieuwe versie = CACHE-naam ophogen (zelfde als js/version.js).
-const CACHE = 'voorraad-1.26.0';
+const CACHE = 'voorraad-1.26.1';
 const FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/desktop.js', 'js/render3d.js', 'js/projects-ui.js', 'js/rich.js', 'js/editor.js', 'js/files.js', 'js/icons.js', 'js/material.js', 'js/qr.js', 'js/router.js',

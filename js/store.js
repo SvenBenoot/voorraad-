@@ -207,18 +207,21 @@ export function normDevice(x) {
 
 /** Ingebouwde modellen (officiële Samsung-datasheets, zonder voet), één keer toegevoegd. */
 const SEED_AT = Date.UTC(2026, 9, 31);
-const qmc = (s, width, height, depth, weight, vesaW, vesaH) =>
-  ({ id: `samsung-qm${s}c`, kind: 'tv', brand: 'Samsung', model: `QM${s}C`, width, height, depth, weight, vesaW, vesaH });
-const DEVICE_SEED = [
-  qmc(43, 969.5, 557.8, 28.5, 8.8, 200, 200),
-  qmc(50, 1124.1, 644.8, 28.5, 11.8, 200, 200),
-  qmc(55, 1237.9, 708.8, 28.5, 15.7, 200, 200),
-  qmc(65, 1456.8, 831.9, 28.5, 21.5, 400, 300),
-  qmc(75, 1682.3, 960.4, 28.5, 33.4, 400, 400),
-  qmc(85, 1904.3, 1085.3, 28.5, 41.9, 600, 400),
-  qmc(98, 2193.2, 1248.8, 48.1, 56.3, 600, 400),
+// v = in welke ronde het model erbij kwam (enkel nieuwe rondes worden toegevoegd, wat je wist komt niet terug).
+const seedTv = (v, serie, s, width, height, depth, weight, vesaW, vesaH) =>
+  ({ v, id: `samsung-${serie}${s}c`, kind: 'tv', brand: 'Samsung', model: `${serie.toUpperCase()}${s}C`, width, height, depth, weight, vesaW, vesaH });
+// QMC en QBC hebben dezelfde behuizing en dus dezelfde maten.
+const SIZES = [
+  [43, 969.5, 557.8, 28.5, 8.8, 200, 200],
+  [50, 1124.1, 644.8, 28.5, 11.8, 200, 200],
+  [55, 1237.9, 708.8, 28.5, 15.7, 200, 200],
+  [65, 1456.8, 831.9, 28.5, 21.5, 400, 300],
+  [75, 1682.3, 960.4, 28.5, 33.4, 400, 400],
+  [85, 1904.3, 1085.3, 28.5, 41.9, 600, 400],
+  [98, 2193.2, 1248.8, 48.1, 56.3, 600, 400],
 ];
-const SEED_V = 1;
+const DEVICE_SEED = [...SIZES.map((x) => seedTv(1, 'qm', ...x)), ...SIZES.map((x) => seedTv(2, 'qb', ...x))];
+const SEED_V = 2;
 
 export const liveDevices = (d) => d.devices.filter((x) => !x.deletedAt);
 /** "Samsung QE55Q80D", of enkel het merk of type als het andere leeg is. */
@@ -514,12 +517,13 @@ export const store = {
 
   /** Ingebouwde modellen één keer toevoegen (vaste id's, dus geen dubbels tussen toestellen). */
   seedDevices() {
-    if ((prefs.value.deviceSeed || 0) >= SEED_V) return;
+    const done = prefs.value.deviceSeed || 0;
+    if (done >= SEED_V) return;
     prefs.set({ deviceSeed: SEED_V });
     const ids = new Set(data.devices.map((x) => x.id));
     const names = new Set(data.devices.map((x) => deviceName(x).toLowerCase()));
-    const add = DEVICE_SEED.filter((x) => !ids.has(x.id) && !names.has(deviceName(x).toLowerCase()))
-      .map((x) => normDevice({ ...x, createdAt: SEED_AT, updatedAt: SEED_AT }));
+    const add = DEVICE_SEED.filter((x) => x.v > done && !ids.has(x.id) && !names.has(deviceName(x).toLowerCase()))
+      .map(({ v, ...x }) => normDevice({ ...x, createdAt: SEED_AT, updatedAt: SEED_AT }));
     if (add.length) this.update((d) => { d.devices = [...d.devices, ...add]; return d; });
   },
 
