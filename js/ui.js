@@ -9,7 +9,8 @@ import { store, prefs, status, needsRestock, shortage, fold } from './store.js';
 
 export function useData() {
   const [d, setD] = useState(store.data);
-  useEffect(() => store.subscribe(setD), []);
+  // Ook wat net vóór het inschrijven veranderde (bv. bij het opstarten).
+  useEffect(() => { setD(store.data); return store.subscribe(setD); }, []);
   return d;
 }
 

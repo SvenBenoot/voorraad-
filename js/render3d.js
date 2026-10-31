@@ -11,8 +11,8 @@ export const VIEWS = { '3d': [-28, 14], front: [0, 0], side: [-90, 0], back: [18
 
 /** Lengte in mm als "1450 mm" of "145 cm", volgens Instellingen. */
 export function fmtLen(v, unit = prefs.value.unit) {
-  if (unit === 'cm') return (Math.round(v) / 10).toLocaleString('nl-BE', { maximumFractionDigits: 1, useGrouping: false }) + ' cm';
-  return Math.round(v).toLocaleString('nl-BE', { useGrouping: false }) + ' mm';
+  if (unit === 'cm') return (Math.round(v * 10) / 100).toLocaleString('nl-BE', { maximumFractionDigits: 2, useGrouping: false }) + ' cm';
+  return (Math.round(v * 10) / 10).toLocaleString('nl-BE', { maximumFractionDigits: 1, useGrouping: false }) + ' mm';
 }
 
 // ---- projectie

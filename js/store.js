@@ -188,7 +188,8 @@ export function normNote(n) {
 /** Soorten toestellen bij Afmetingen. */
 export const DEVICE_KINDS = [{ key: 'tv', label: 'Tv' }, { key: 'bar', label: 'Video soundbar' }];
 // Maten in hele mm (zo bewaard, ook als je in cm werkt), gewicht in kg.
-const mm = (v) => (Number.isFinite(+v) && +v > 0 ? Math.round(+v) : 0);
+// Op 0,1 mm (fabrikanten geven bv. 969,5 mm op).
+const mm = (v) => (Number.isFinite(+v) && +v > 0 ? Math.round(+v * 10) / 10 : 0);
 
 export function normDevice(x) {
   const now = Date.now();
@@ -203,6 +204,21 @@ export function normDevice(x) {
     ...(x.deletedAt ? { deletedAt: +x.deletedAt } : {}),
   };
 }
+
+/** Ingebouwde modellen (officiële Samsung-datasheets, zonder voet), één keer toegevoegd. */
+const SEED_AT = Date.UTC(2026, 9, 31);
+const qmc = (s, width, height, depth, weight, vesaW, vesaH) =>
+  ({ id: `samsung-qm${s}c`, kind: 'tv', brand: 'Samsung', model: `QM${s}C`, width, height, depth, weight, vesaW, vesaH });
+const DEVICE_SEED = [
+  qmc(43, 969.5, 557.8, 28.5, 8.8, 200, 200),
+  qmc(50, 1124.1, 644.8, 28.5, 11.8, 200, 200),
+  qmc(55, 1237.9, 708.8, 28.5, 15.7, 200, 200),
+  qmc(65, 1456.8, 831.9, 28.5, 21.5, 400, 300),
+  qmc(75, 1682.3, 960.4, 28.5, 33.4, 400, 400),
+  qmc(85, 1904.3, 1085.3, 28.5, 41.9, 600, 400),
+  qmc(98, 2193.2, 1248.8, 48.1, 56.3, 600, 400),
+];
+const SEED_V = 1;
 
 export const liveDevices = (d) => d.devices.filter((x) => !x.deletedAt);
 /** "Samsung QE55Q80D", of enkel het merk of type als het andere leeg is. */
@@ -496,6 +512,17 @@ export const store = {
 
   device(id) { return data.devices.find((x) => x.id === id && !x.deletedAt); },
 
+  /** Ingebouwde modellen één keer toevoegen (vaste id's, dus geen dubbels tussen toestellen). */
+  seedDevices() {
+    if ((prefs.value.deviceSeed || 0) >= SEED_V) return;
+    prefs.set({ deviceSeed: SEED_V });
+    const ids = new Set(data.devices.map((x) => x.id));
+    const names = new Set(data.devices.map((x) => deviceName(x).toLowerCase()));
+    const add = DEVICE_SEED.filter((x) => !ids.has(x.id) && !names.has(deviceName(x).toLowerCase()))
+      .map((x) => normDevice({ ...x, createdAt: SEED_AT, updatedAt: SEED_AT }));
+    if (add.length) this.update((d) => { d.devices = [...d.devices, ...add]; return d; });
+  },
+
   async addDevice(fields) {
     const now = Date.now();
     const x = normDevice({ ...fields, id: newId(), createdAt: now, updatedAt: now });
@@ -706,7 +733,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT', unit: 'mm' };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT', unit: 'mm', deviceSeed: 0 };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

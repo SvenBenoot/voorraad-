@@ -85,6 +85,7 @@ document.addEventListener('pointerdown', (e) => {
   render(html`<${App} />`, document.getElementById('app'));
   // Online opslaan (als je op dit toestel ingelogd bent); de app werkt intussen al gewoon.
   cloud.start();
+  store.seedDevices(); // ingebouwde modellen bij Afmetingen (één keer)
   store.purgeTrash(); // wat langer dan 30 dagen in de prullenmand zit, verdwijnt (ook online)
 })();
 
