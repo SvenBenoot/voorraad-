@@ -132,6 +132,8 @@ export function normalize(raw) {
     notes: (raw?.notes ?? []).filter((x) => x?.id != null && x.projectId != null).map(normNote),
     // Afmetingen van tv's en video soundbars (sinds 1.24), ook met deletedAt.
     devices: (raw?.devices ?? []).filter((x) => x?.id != null).map(normDevice),
+    // Schetsen bij een project (sinds 1.27), ook met deletedAt.
+    sketches: (raw?.sketches ?? []).filter((x) => x?.id != null && x.projectId != null).map(normSketch),
   };
   // De categorieën die er in 1.7 bijkwamen één keer toevoegen (vóór "Andere"), tenzij er al een met die naam is.
   if (raw?.categories?.length && !raw.extraCategories) {
@@ -182,6 +184,23 @@ export function normNote(n) {
     ...(n.deletedAt ? { deletedAt: +n.deletedAt } : {}),
   };
 }
+
+const SKETCH_BGS = ['blank', 'lines', 'grid', 'dots', 'mm'];
+
+/** Schets: één A4-blad met lijnen ([ink], zie sketch.js), achtergrond en staand of liggend. */
+export function normSketch(x) {
+  const now = Date.now();
+  const createdAt = time(x.createdAt, now);
+  return {
+    id: String(x.id), projectId: String(x.projectId), name: String(x.name ?? ''),
+    bg: SKETCH_BGS.includes(x.bg) ? x.bg : 'blank', landscape: !!x.landscape, ink: String(x.ink ?? ''),
+    createdAt, updatedAt: time(x.updatedAt, createdAt),
+    ...(x.deletedAt ? { deletedAt: +x.deletedAt } : {}),
+  };
+}
+
+export const sketchesOf = (d, projectId) => d.sketches.filter((x) => x.projectId === projectId && !x.deletedAt)
+  .sort((a, b) => a.createdAt - b.createdAt);
 
 // ---- afmetingen (tv's en video soundbars)
 
@@ -395,8 +414,10 @@ export const store = {
       const projects = d.projects.filter((p) => !gone.has(p.id));
       const notes = d.notes.filter((n) => !gone.has(n.projectId) && !(n.deletedAt && n.deletedAt <= limit));
       const devices = d.devices.filter((x) => !(x.deletedAt && x.deletedAt <= limit));
+      const sketches = d.sketches.filter((x) => !gone.has(x.projectId) && !(x.deletedAt && x.deletedAt <= limit));
       if (keep.length === d.trash.length && projects.length === d.projects.length && notes.length === d.notes.length
-        && devices.length === d.devices.length) return null;
+        && devices.length === d.devices.length && sketches.length === d.sketches.length) return null;
+      d.sketches = sketches;
       d.trash = keep;
       d.projects = projects;
       d.notes = notes;
@@ -453,6 +474,7 @@ export const store = {
       d.projects = d.projects.filter((p) => !gone.has(p.id));
       const notes = d.notes.filter((n) => !gone.has(n.projectId));
       d.notes = notes;
+      d.sketches = d.sketches.filter((x) => !gone.has(x.projectId));
       return d;
     });
   },
@@ -507,6 +529,55 @@ export const store = {
     return this.update((d) => {
       if (!d.notes.some((n) => set.has(n.id) && n.deletedAt)) return null;
       d.notes = d.notes.map((n) => { if (!set.has(n.id) || !n.deletedAt) return n; const { deletedAt, ...rest } = n; return { ...rest, updatedAt: Date.now() }; }); // eslint-disable-line no-unused-vars
+      return d;
+    });
+  },
+
+  // ---- schetsen
+
+  sketch(id) { return data.sketches.find((x) => x.id === id && !x.deletedAt); },
+
+  /** Nieuw blad in [projectId]; krijgt de naam "Schets 1", "Schets 2", … */
+  async addSketch(projectId, { bg = 'blank', landscape = false } = {}) {
+    const now = Date.now();
+    const names = new Set(data.sketches.filter((x) => x.projectId === projectId && !x.deletedAt).map((x) => x.name));
+    let n = 1;
+    while (names.has('Schets ' + n)) n++;
+    const x = normSketch({ id: newId(), projectId, name: 'Schets ' + n, bg, landscape, createdAt: now, updatedAt: now });
+    await this.update((d) => {
+      d.sketches = [...d.sketches, x];
+      d.projects = d.projects.map((p) => (p.id === projectId ? { ...p, updatedAt: now } : p));
+      return d;
+    });
+    return x;
+  },
+
+  /** Velden van een schets wijzigen, bv. { ink }, { bg }, { name }. */
+  editSketch(id, patch) {
+    return this.update((d) => {
+      const old = d.sketches.find((x) => x.id === id);
+      if (!old) return null;
+      const next = normSketch({ ...old, ...patch, updatedAt: Date.now() });
+      if (same(old, next, ['updatedAt'])) return null;
+      d.sketches = d.sketches.map((x) => (x.id === id ? next : x));
+      return d;
+    });
+  },
+
+  /** Naar de prullenmand (30 dagen), zoals notities. */
+  deleteSketch(id) {
+    const now = Date.now();
+    return this.update((d) => {
+      if (!d.sketches.some((x) => x.id === id && !x.deletedAt)) return null;
+      d.sketches = d.sketches.map((x) => (x.id === id ? { ...x, deletedAt: now, updatedAt: now } : x));
+      return d;
+    });
+  },
+
+  restoreSketch(id) {
+    return this.update((d) => {
+      if (!d.sketches.some((x) => x.id === id && x.deletedAt)) return null;
+      d.sketches = d.sketches.map((x) => { if (x.id !== id) return x; const { deletedAt, ...rest } = x; return { ...rest, updatedAt: Date.now() }; }); // eslint-disable-line no-unused-vars
       return d;
     });
   },
@@ -681,7 +752,8 @@ export const store = {
     // Een reservekopie van vóór 1.20 heeft geen projecten: dan blijven de huidige staan.
     // Zo ook voor de afmetingen (sinds 1.24).
     const keep = { ...(raw && !('projects' in raw) ? { projects: data.projects, notes: data.notes } : {}),
-      ...(raw && !('devices' in raw) ? { devices: data.devices } : {}) };
+      ...(raw && !('devices' in raw) ? { devices: data.devices } : {}),
+      ...(raw && !('sketches' in raw) ? { sketches: data.sketches } : {}) };
     data = normalize(raw ? { ...raw, ...keep } : raw);
     emit();
     sync(prev, data);
@@ -737,7 +809,7 @@ function freshCode(d) {
 // ---- instellingen (klein, per toestel)
 
 const SETTINGS_KEY = 'voorraad-instellingen';
-const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT', unit: 'mm', deviceSeed: 0 };
+const settingDefaults = { cloudUser: '', syncAt: 0, itemsAt: 0, itemsFullAt: 0, projectsAt: 0, projectsFullAt: 0, notesAt: 0, notesFullAt: 0, devicesAt: 0, devicesFullAt: 0, sketchesAt: 0, sketchesFullAt: 0, penSeen: false, sketchTool: null, photosCleared: false, cloudDirty: false, theme: 'SYSTEM', sort: 'NAME', swipeLearned: false, lastBackup: 0, scanSound: true, startAt: '/start', projectSort: 'RECENT', unit: 'mm', deviceSeed: 0 };
 
 function readSettings() {
   try { return { ...settingDefaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }

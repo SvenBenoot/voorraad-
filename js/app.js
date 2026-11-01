@@ -18,6 +18,7 @@ import { CatalogScreen } from './screens/catalog.js';
 import { TrashScreen } from './screens/trash.js';
 import { StartScreen } from './screens/start.js';
 import { ProjectsScreen, ProjectScreen, ProjectTrashScreen } from './screens/projects.js';
+import { SketchScreen } from './screens/sketch.js';
 import { DevicesScreen, DeviceScreen, ComboScreen, DeviceTrashScreen } from './screens/devices.js';
 import { useDesktop, DesktopShell } from './desktop.js';
 
@@ -38,6 +39,7 @@ function screenFor(path) {
     case 'projecten': return html`<${ProjectsScreen} />`;
     case 'verwijderde-projecten': return html`<${ProjectTrashScreen} />`;
     case 'project': return html`<${ProjectScreen} key=${'p' + b} id=${b} />`;
+    case 'schets': return html`<${SketchScreen} key=${'s' + b} id=${b} />`;
     case 'afmetingen': return html`<${DevicesScreen} />`;
     case 'afmeting': return html`<${DeviceScreen} key=${'d' + b} id=${b} />`;
     case 'combineren': return html`<${ComboScreen} />`;
@@ -63,7 +65,7 @@ function App() {
   // Zonder login geen app: zo weet je zeker dat alles online bewaard wordt.
   // Op een breed scherm: zijbalk links en dezelfde schermen als op de gsm (zie desktop.js); het keuzescherm zonder zijbalk.
   const screen = !p.cloudUser ? html`<${LoginScreen} />`
-    : desktop && path !== '/start' ? html`<${DesktopShell} path=${path}>${screenFor(path)}<//>` : screenFor(path);
+    : desktop && path !== '/start' && !path.startsWith('/schets/') ? html`<${DesktopShell} path=${path}>${screenFor(path)}<//>` : screenFor(path);
   return html`${screen}<${ToastHost} />`;
 }
 
