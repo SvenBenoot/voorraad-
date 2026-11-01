@@ -4,7 +4,7 @@
 // project met taken om af te vinken en notities. Op de pc dezelfde schermen, naast de zijbalk.
 import { html, useState } from '../../lib/preact-htm.js';
 import { Icon } from '../icons.js';
-import { store, liveProjects, notesOf, sortTasks, daysLeft } from '../store.js';
+import { store, liveProjects, notesOf, sketchesOf, sortTasks, daysLeft } from '../store.js';
 import {
   useData, BrandBar, TopBar, IconButton, Button, Footer, SearchField, FilterChip, Card, EmptyState, ConfirmDialog,
   plural, toast, fmtDate,
@@ -15,6 +15,7 @@ import {
   projectStats, sortProjects, ProjectCard, NoteRow, NoteDialog, ProjectDialog, SortableList, shareProject, trashNotes,
   searchWords, matches, Linked,
 } from '../projects-ui.js';
+import { Thumb } from './sketch.js';
 
 // Zoekterm en filter blijven staan als je een project opent en terugkomt.
 const kept = { query: '', filter: 'active' };
@@ -25,7 +26,8 @@ function useKept(key) {
 
 // ---- lijst met projecten
 
-const countText = (s) => [s.open + s.done && plural(s.open + s.done, 'taak', 'taken'), s.notes && plural(s.notes, 'notitie', 'notities')]
+const countText = (s) => [s.open + s.done && plural(s.open + s.done, 'taak', 'taken'), s.notes && plural(s.notes, 'notitie', 'notities'),
+  s.sketches && plural(s.sketches, 'schets', 'schetsen')]
   .filter(Boolean).map((t) => t + ' · ').join('');
 
 export function ProjectsScreen() {
@@ -131,7 +133,7 @@ export function ProjectTrashScreen() {
 
 // Per project onthouden of de afgevinkte taken open staan.
 const showDone = new Map();
-// Per project het laatst gekozen tabblad (Taken of Notities).
+// Per project het laatst gekozen tabblad (Taken, Notities of Schetsen).
 const tabs = new Map();
 
 export function ProjectScreen({ id }) {
@@ -156,7 +158,9 @@ export function ProjectScreen({ id }) {
   }
 
   const all = notesOf(data, id);
+  const allSketches = sketchesOf(data, id);
   const words = searchWords(query);
+  const sketches = words.length ? allSketches.filter((x) => matches(words, x.name)) : allSketches;
   const notes = words.length ? all.filter((n) => matches(words, n.text)) : all;
   const tasks = sortTasks(notes.filter((n) => n.task && !n.done));
   const memo = sortTasks(notes.filter((n) => !n.task));
@@ -180,7 +184,14 @@ export function ProjectScreen({ id }) {
   const plainList = (items, cls = 'note-list') => html`<div class=${cls}>${items.map((n) => row(n))}</div>`;
   const add = (kind) => setOpenNote({ kind });
 
-  const nothing = words.length > 0 && notes.length === 0 && html`<p class="sub nothing center">Niets gevonden.</p>`;
+  // Nieuw blad: zelfde achtergrond en richting als het laatst gemaakte blad.
+  const addSketch = async () => {
+    const last = data.sketches.reduce((a, x) => (!a || x.createdAt > a.createdAt ? x : a), null);
+    const x = await store.addSketch(id, { bg: last?.bg ?? 'blank', landscape: last?.landscape ?? false });
+    go(`/schets/${x.id}`);
+  };
+
+  const nothing = words.length > 0 && notes.length === 0 && sketches.length === 0 && html`<p class="sub nothing center">Niets gevonden.</p>`;
 
   const dialogs = html`
     ${editing && html`<${ProjectDialog} project=${p} onDismiss=${() => setEditing(false)} onDeleted=${() => home('/projecten')} />`}
@@ -211,13 +222,15 @@ export function ProjectScreen({ id }) {
         </div>`}
       </div>`}
 
-      <div class="seg proj-tabs" role="tablist">
+      <div class="seg proj-tabs three" role="tablist">
         <button type="button" role="tab" aria-selected=${t === 'tasks'} class=${t === 'tasks' ? 'on' : ''} onClick=${() => setT('tasks')}>
           Taken${openCount > 0 && html`<b class="tab-n">${openCount}</b>`}</button>
         <button type="button" role="tab" aria-selected=${t === 'notes'} class=${t === 'notes' ? 'on' : ''} onClick=${() => setT('notes')}>
           Notities${memoCount > 0 && html`<b class="tab-n">${memoCount}</b>`}</button>
+        <button type="button" role="tab" aria-selected=${t === 'sketches'} class=${t === 'sketches' ? 'on' : ''} onClick=${() => setT('sketches')}>
+          Schetsen${allSketches.length > 0 && html`<b class="tab-n">${allSketches.length}</b>`}</button>
       </div>
-      ${all.length > 8 && html`<${SearchField} value=${query} onInput=${setQuery} hint="Zoeken in dit project" />`}
+      ${all.length + allSketches.length > 8 && html`<${SearchField} value=${query} onInput=${setQuery} hint="Zoeken in dit project" />`}
       ${nothing}
 
       ${t === 'tasks' && html`
@@ -234,9 +247,17 @@ export function ProjectScreen({ id }) {
           ${done.length > doneShown.length && html`<button type="button" class="link-btn" onClick=${() => setDoneOpen(true)}>Toon alle ${done.length}</button>`}`}`}
       ${t === 'notes' && (memo.length > 0 ? listOf(memo) : !words.length && html`<div class="proj-empty">
         <${Icon} name="sticky_note_2" size=${32} /><span>Nog geen notities</span></div>`)}
+      ${t === 'sketches' && (sketches.length > 0 ? html`<div class="sk-grid">${sketches.map((x) => html`<button type="button" key=${x.id}
+          class="sk-card" onClick=${() => go(`/schets/${x.id}`)}>
+          <span class="sk-card-img"><${Thumb} bg=${x.bg} landscape=${x.landscape} ink=${x.ink} w=${x.landscape ? 130 : 106} /></span>
+          <span class="sk-card-name ellipsis">${x.name || 'Schets'}</span>
+          <span class="small faint">${fmtDate(x.updatedAt)}</span>
+        </button>`)}</div>` : !words.length && html`<div class="proj-empty">
+        <${Icon} name="i_pen" size=${32} /><span>Nog geen schetsen</span></div>`)}
     </main>
     <${Footer}>
-      <${Button} kind="primary" icon="i_add" cls="wide" onClick=${() => add(t === 'tasks' ? 'task' : 'note')}>Toevoegen<//>
+      <${Button} kind="primary" icon="i_add" cls="wide" onClick=${() => (t === 'sketches' ? addSketch() : add(t === 'tasks' ? 'task' : 'note'))}>
+        ${t === 'sketches' ? 'Nieuw blad' : 'Toevoegen'}<//>
     <//>
     ${dialogs}
   </div>`;

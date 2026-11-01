@@ -15,7 +15,7 @@ export const chev = html`<svg class="chev" width="18" height="18" viewBox="0 0 2
 
 /** Open en afgevinkte taken, notities, wat te laat is en de eerstvolgende deadline. Eén keer per scherm uitrekenen. */
 export function projectStats(data) {
-  const map = new Map(data.projects.map((p) => [p.id, { open: 0, done: 0, notes: 0, overdue: 0, next: '', last: p.updatedAt }]));
+  const map = new Map(data.projects.map((p) => [p.id, { open: 0, done: 0, notes: 0, sketches: 0, overdue: 0, next: '', last: p.updatedAt }]));
   for (const n of data.notes) {
     const s = map.get(n.projectId);
     if (!s || n.deletedAt) continue;
@@ -27,6 +27,12 @@ export function projectStats(data) {
       if (daysUntil(n.due) < 0) s.overdue++;
       if (!s.next || n.due < s.next) s.next = n.due;
     }
+  }
+  for (const x of data.sketches) {
+    const s = map.get(x.projectId);
+    if (!s || x.deletedAt) continue;
+    s.sketches++;
+    if (x.updatedAt > s.last) s.last = x.updatedAt;
   }
   return map;
 }
@@ -89,9 +95,10 @@ export function ProjectCard({ project: p, stats: s, hit, onClick }) {
       <span class="small faint">${s.done}/${total}</span>
     </div>`}
     <div class="chips proj-meta">
-      ${total === 0 && s.notes === 0 ? html`<span class="small faint">Nog leeg</span>` : null}
+      ${total === 0 && s.notes === 0 && s.sketches === 0 ? html`<span class="small faint">Nog leeg</span>` : null}
       ${s.open > 0 && html`<span class="chip"><${Icon} name="i_checklist" size=${14} />${s.open} open</span>`}
       ${s.notes > 0 && html`<span class="chip"><${Icon} name="sticky_note_2" size=${14} />${plural(s.notes, 'notitie', 'notities')}</span>`}
+      ${s.sketches > 0 && html`<span class="chip"><${Icon} name="i_pen" size=${14} />${plural(s.sketches, 'schets', 'schetsen')}</span>`}
       ${s.overdue > 0 ? html`<span class="pill small-pill tone-red"><${Icon} name="i_warning" size=${14} />${s.overdue} te laat</span>`
         : s.next && html`<${DuePill} due=${s.next} />`}
     </div>

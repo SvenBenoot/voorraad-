@@ -852,3 +852,48 @@ body.sorting, body.sorting * { cursor: grabbing !important; user-select: none; -
 .dev-pick-text { display: flex; flex-direction: column; min-width: 0; }
 .dev-pick-text b { font-weight: 600; }
 .device-dialog .seg button { font-size: 14px; }
+
+/* ---- schetsen (1.27) */
+.seg.proj-tabs.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 380px) { .seg.proj-tabs.three button { font-size: 14px; gap: 5px; } }
+.sk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.sk-card { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 14px; border: 1px solid var(--card-edge);
+  background: var(--card-fill); color: var(--text); font: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.sk-card:active { background: var(--hover); }
+.sk-card-img { display: flex; align-items: center; justify-content: center; height: 150px; margin-bottom: 4px; }
+.sk-thumb { display: block; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .12), 0 2px 6px rgba(0, 0, 0, .08); }
+.sk-card-name { font-size: 15px; font-weight: 600; }
+
+.sketch-screen { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+.sk-bar { position: relative; }
+.sk-title { border: 0; background: none; color: var(--text); font: inherit; font-size: 18px; font-weight: 600; text-align: left; padding: 0; cursor: pointer; min-width: 0; }
+.icon-btn.off { opacity: .32; }
+.sk-tools { display: flex; align-items: center; gap: 6px; padding: 6px max(8px, env(safe-area-inset-left)); overflow-x: auto;
+  scrollbar-width: none; border-bottom: 1px solid var(--line); background: var(--footer); }
+.sk-tools::-webkit-scrollbar { display: none; }
+.sk-group { display: flex; align-items: center; gap: 2px; flex: none; }
+.sk-sep { width: 1px; height: 28px; background: var(--line); margin: 0 4px; flex: none; }
+.sk-btn { width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--sub); display: inline-flex;
+  align-items: center; justify-content: center; cursor: pointer; flex: none; }
+.sk-btn.on { background: var(--accent-bg); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.sk-size i { display: block; border-radius: 50%; background: var(--text); }
+.sk-size i.ring { background: none; box-shadow: inset 0 0 0 2px var(--sub); }
+.sk-colors { gap: 6px; padding: 0 4px; }
+.sk-color { position: relative; width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0; background: var(--c); cursor: pointer; flex: none;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
+.sk-color.on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+.sk-custom { background: conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444); }
+.sk-custom::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px #fff; }
+.sk-custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.sk-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom); background: color-mix(in srgb, var(--text) 7%, var(--bg)); }
+.sk-page { position: relative; flex: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .18), 0 6px 20px rgba(0, 0, 0, .12);
+  touch-action: none; cursor: crosshair; }
+.sk-page canvas { position: absolute; left: 0; top: 0; display: block; touch-action: none; }
+.sk-bgs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.sk-bg { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 2px; border: 1px solid var(--line); border-radius: 10px;
+  background: none; color: var(--sub); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sk-bg.on { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.sheet-dialog .seg button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.sk-dialog-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
